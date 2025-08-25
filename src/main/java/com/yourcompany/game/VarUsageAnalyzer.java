@@ -17,7 +17,7 @@ public class VarUsageAnalyzer extends AbstractFeatureAnalyzer {
     private static final Logger LOGGER = Logger.getLogger(VarUsageAnalyzer.class.getName());
 
     // OPTYMALIZACJA: Pre-kompilowane wzorce RegEx dla wyciągania var deklaracji
-    private static final Pattern VAR_DECLARATION_PATTERN = Pattern.compile("\\bvar\\s+\\w+\\s*=.*");
+    private static final Pattern VAR_DECLARATION_PATTERN = Pattern.compile("\\bvar\\s+\\w+\\s*=[^;]*;?");
     private static final Pattern VAR_KEYWORD_PATTERN = Pattern.compile("\\bvar\\b");
 
     // OPTYMALIZACJA: Cache dla podziału linii (thread-safe)

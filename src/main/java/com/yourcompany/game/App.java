@@ -38,6 +38,7 @@ public class App {
             repositoriesToAnalyze = Arrays.stream(allFilesInParent)
                     .filter(File::isDirectory)
                     .filter(dir -> !dir.getName().contains("Parsing"))
+                    .filter(dir -> !dir.getName().contains("treść"))
                     .collect(Collectors.toList());
         }
 
@@ -144,7 +145,7 @@ public class App {
         executor.shutdown();
         try {
             executor.awaitTermination(1, TimeUnit.HOURS);
-        } catch (InterruptedException _) {
+        } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             System.err.println("Oczekiwanie na zakończenie wątków przerwane.");
         }

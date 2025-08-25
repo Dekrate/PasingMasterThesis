@@ -19,7 +19,7 @@ public abstract class AbstractFeatureAnalyzer implements SyntaxAnalyzerStrategy 
     private static final Pattern SPACE_AFTER_OPENING_PATTERN = Pattern.compile("([({\\[])\\s+");
 
     // OPTYMALIZACJA: Cache dla strukturalnych kontekstów - THREAD SAFE
-    private final java.util.concurrent.ConcurrentHashMap<Integer, String> structuralContextCache = new java.util.concurrent.ConcurrentHashMap<>();
+    private final java.util.concurrent.ConcurrentHashMap<String, String> structuralContextCache = new java.util.concurrent.ConcurrentHashMap<>();
     private final java.util.concurrent.ConcurrentHashMap<String, String> normalizedCodeCache = new java.util.concurrent.ConcurrentHashMap<>();
 
     // Limity cache'a dla kontroli pamięci
@@ -124,25 +124,41 @@ public abstract class AbstractFeatureAnalyzer implements SyntaxAnalyzerStrategy 
             return "unknown::";
         }
 
-        // NAPRAWKA: Używaj pozycji węzła w cache zamiast samego hashCode
-        // Oba wystąpienia "var x = 5" mają identyczny hashCode, ale różne pozycje
-        String cacheKey = astNode.hashCode() + ":" + astNode.getBegin().map(pos -> pos.line + ":" + pos.column).orElse("unknown");
-        String cached = structuralContextCache.get(cacheKey.hashCode());
+        // NAPRAWKA: Używaj kompletną ścieżkę AST w cache key
+        String astPath = generateASTPath(astNode);
+        String cacheKey = astNode.hashCode() + ":" + astPath;
+        
+        String cached = structuralContextCache.get(cacheKey);
         if (cached != null) {
-            System.out.println("DEBUG: Używam cache dla klucza: " + cacheKey);
             return cached;
         }
 
-        System.out.println("DEBUG: Generuję nowy kontekst dla klucza: " + cacheKey);
         StructuralContextBuilder builder = new StructuralContextBuilder(astNode);
         String context = builder.build();
 
         // Thread-safe zapisywanie do cache z kontrolą rozmiaru
         if (structuralContextCache.size() < MAX_CACHE_SIZE) {
-            structuralContextCache.putIfAbsent(cacheKey.hashCode(), context);
+            structuralContextCache.putIfAbsent(cacheKey, context);
         }
 
         return context;
+    }
+
+    // Helper method to generate unique AST path
+    private String generateASTPath(com.github.javaparser.ast.Node node) {
+        StringBuilder path = new StringBuilder();
+        com.github.javaparser.ast.Node current = node;
+        
+        while (current != null) {
+            path.append(current.getClass().getSimpleName()).append(":");
+            if (current instanceof com.github.javaparser.ast.body.ClassOrInterfaceDeclaration clazz) {
+                path.append(clazz.getNameAsString()).append(":");
+            }
+            path.append(current.hashCode()).append("/");
+            current = current.getParentNode().orElse(null);
+        }
+        
+        return path.toString();
     }
 
     // Wydzielona klasa dla budowania kontekstu strukturalnego
@@ -219,6 +235,8 @@ public abstract class AbstractFeatureAnalyzer implements SyntaxAnalyzerStrategy 
         private void appendClass(com.github.javaparser.ast.body.ClassOrInterfaceDeclaration clazz) {
             if (clazz.isLocalClassDeclaration()) {
                 context.append("localclass:").append(clazz.getNameAsString()).append("::");
+            } else if (clazz.isInterface()) {
+                context.append("interface:").append(clazz.getNameAsString()).append("::");
             } else {
                 context.append("class:").append(clazz.getNameAsString()).append("::");
             }
@@ -294,15 +312,15 @@ public abstract class AbstractFeatureAnalyzer implements SyntaxAnalyzerStrategy 
                     processSynchronizedStatement(syncStmt);
                 case com.github.javaparser.ast.stmt.ForStmt forStmt -> {
                     int hashCode = forStmt.hashCode() == Integer.MIN_VALUE ? 0 : Math.abs(forStmt.hashCode());
-                    scope.insert(0, "for").insert(3, String.valueOf(hashCode)).insert(scope.length(), ":");
+                    scope.insert(0, "for" + hashCode + ":");
                 }
                 case com.github.javaparser.ast.stmt.ForEachStmt forEachStmt -> {
                     int hashCode = forEachStmt.hashCode() == Integer.MIN_VALUE ? 0 : Math.abs(forEachStmt.hashCode());
-                    scope.insert(0, "foreach").insert(7, String.valueOf(hashCode)).insert(scope.length(), ":");
+                    scope.insert(0, "foreach" + hashCode + ":");
                 }
                 case com.github.javaparser.ast.stmt.WhileStmt whileStmt -> {
                     int hashCode = whileStmt.hashCode() == Integer.MIN_VALUE ? 0 : Math.abs(whileStmt.hashCode());
-                    scope.insert(0, "while").insert(5, String.valueOf(hashCode)).insert(scope.length(), ":");
+                    scope.insert(0, "while" + hashCode + ":");
                 }
                 default -> {
                     // Ignoruj inne typy węzłów
