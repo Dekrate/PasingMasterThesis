@@ -10,8 +10,14 @@ import com.github.javaparser.ast.visitor.VoidVisitorAdapter;
 import com.github.javaparser.ast.NodeList;
 
 import java.nio.file.Path;
+import java.util.stream.Stream;
 
 public class PatternMatchingSwitchAnalyzer extends AbstractFeatureAnalyzer {
+
+	// OPTYMALIZACJA: Cache dla podziału linii - unikamy wielokrotnego split()
+	private static final java.util.concurrent.ConcurrentHashMap<String, String[]> linesSplitCache =
+		new java.util.concurrent.ConcurrentHashMap<>();
+	private static final int MAX_LINES_CACHE_SIZE = 100;
 
 	@Override
 	public void analyze(CompilationUnit cu, Path filePath, String fileContent) {
@@ -68,23 +74,24 @@ public class PatternMatchingSwitchAnalyzer extends AbstractFeatureAnalyzer {
 				// Identyfikujemy pierwszą linię switcha dla referencji
 				int line = switchStartLine;
 
-				// Bierzemy kontekst obejmujący cały switch plus kilka linii przed i po
+				// OPTYMALIZACJA: Używamy cache dla podziału linii
+				String[] lines = getFileLines(fileContent);
 				int contextStart = Math.max(0, switchStartLine - 2);
-				int contextEnd = Math.min(fileContent.split("\n").length, switchEndLine + 2);
+				int contextEnd = Math.min(lines.length, switchEndLine + 2);
 
 				// Pobieramy pierwszą linię switcha jako lineContent
-				String lineContent = fileContent.lines().skip((long)(line - 1)).findFirst().orElse("");
+				String lineContent = (line <= lines.length) ? lines[line - 1] : "";
 
 				// Jeśli linia nie zawiera "switch", sprawdź linijkę niżej (typowe dla adnotacji)
 				if (!lineContent.contains("switch")) {
 					// Sprawdzaj do 5 linii niżej (dla przypadków z wieloma adnotacjami)
-					for (int offset = 1; offset <= 5; offset++) {
-						String nextLineContent = fileContent.lines().skip((long)(line - 1 + offset)).findFirst().orElse("");
+					for (int offset = 1; offset <= 5 && (line + offset - 1) < lines.length; offset++) {
+						String nextLineContent = lines[line + offset - 1];
 						if (nextLineContent.contains("switch")) {
 							lineContent = nextLineContent;
 							line = line + offset;
 							contextStart = Math.max(0, switchStartLine - 2);
-							contextEnd = Math.min(fileContent.split("\n").length, switchEndLine + 2);
+							contextEnd = Math.min(lines.length, switchEndLine + 2);
 							break;
 						}
 					}
@@ -97,11 +104,15 @@ public class PatternMatchingSwitchAnalyzer extends AbstractFeatureAnalyzer {
 				// Dodajemy informację o wzorcach w switchu
 				String patternInfo = "Switch contains pattern matching on lines " + switchStartLine + " to " + switchEndLine;
 
-				// Pobieramy pełny kontekst switcha
-				String context = fileContent.lines()
-						.skip((long)contextStart)
-						.limit((long)(contextEnd - contextStart))
-						.collect(java.util.stream.Collectors.joining("\n"));
+				// OPTYMALIZACJA: Używamy StringBuilder zamiast stream collectors dla lepszej wydajności
+				StringBuilder contextBuilder = new StringBuilder();
+				for (int i = contextStart; i < contextEnd && i < lines.length; i++) {
+					if (contextBuilder.length() > 0) {
+						contextBuilder.append('\n');
+					}
+					contextBuilder.append(lines[i]);
+				}
+				String context = contextBuilder.toString();
 
 				// Kontekst dla pattern matching switch: hash zawartości pierwszej linii (stabilny między commitami)
 				String contentHash = generateContentHash(lineContent);
@@ -122,6 +133,26 @@ public class PatternMatchingSwitchAnalyzer extends AbstractFeatureAnalyzer {
 						specificContext  // Kontekst: pattern-switch-hash:12345
 					);
 				}
+			}
+
+			// OPTYMALIZACJA: Thread-safe cache dla podziału linii
+			private String[] getFileLines(String fileContent) {
+				// Używamy hash jako klucza cache dla bezpieczeństwa pamięci
+				String cacheKey = String.valueOf(fileContent.hashCode());
+
+				String[] cached = linesSplitCache.get(cacheKey);
+				if (cached != null) {
+					return cached;
+				}
+
+				String[] lines = fileContent.split("\n");
+
+				// Thread-safe zapisywanie do cache z kontrolą rozmiaru
+				if (linesSplitCache.size() < MAX_LINES_CACHE_SIZE) {
+					linesSplitCache.putIfAbsent(cacheKey, lines);
+				}
+
+				return lines;
 			}
 		}, null);
 	}

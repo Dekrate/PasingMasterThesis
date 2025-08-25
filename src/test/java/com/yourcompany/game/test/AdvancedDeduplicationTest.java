@@ -190,6 +190,16 @@ class AdvancedDeduplicationTest {
 
         List<FeatureOccurrence> occurrences = analyzer.getOccurrences();
 
+        // DEBUG: Wypisz wszystkie znalezione wystąpienia
+        System.out.println("=== DEBUG: Znalezione wystąpienia ===");
+        for (int i = 0; i < occurrences.size(); i++) {
+            FeatureOccurrence occ = occurrences.get(i);
+            System.out.println("Wystąpienie " + (i+1) + ":");
+            System.out.println("  Linia: " + occ.getLineContent());
+            System.out.println("  Zawartość: " + occ.getLineContent());
+        }
+        System.out.println("==========================================");
+
         // Powinny być 2 wystąpienia
         assertEquals(2, occurrences.size(), "Synchronized blocks: powinny być 2 wystąpienia");
 

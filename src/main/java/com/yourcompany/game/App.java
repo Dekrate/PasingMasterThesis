@@ -21,14 +21,14 @@ public class App {
 	private static final Object CSV_LOCK = new Object();
 
 	public static void main(String[] args) {
-//        // DEBUG: Analizuj konkretny commit z lombok
-//        String debugCommitHash = "fdcbaa03";
-//        String debugRepoName = "lombok";
-//
-//        if (debugCommitHash != null && !debugCommitHash.isEmpty()) {
-//            debugSpecificCommit(debugCommitHash, debugRepoName);
-//            return;
-//        }
+        // DEBUG: Analizuj konkretny commit z lombok
+        String debugCommitHash = "fdcbaa03";
+        String debugRepoName = "lombok";
+
+        if (debugCommitHash != null && !debugCommitHash.isEmpty()) {
+            debugSpecificCommit(debugCommitHash, debugRepoName);
+            return;
+        }
 
         File parentDir = new File("..").getAbsoluteFile();
         File[] allFilesInParent = parentDir.listFiles();

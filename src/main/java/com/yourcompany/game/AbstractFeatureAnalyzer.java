@@ -6,18 +6,34 @@ import java.util.List;
 import java.util.Set;
 import java.util.logging.Logger;
 import java.util.logging.Level;
+import java.util.regex.Pattern;
 
 public abstract class AbstractFeatureAnalyzer implements SyntaxAnalyzerStrategy {
     private static final Logger LOGGER = Logger.getLogger(AbstractFeatureAnalyzer.class.getName());
 
-    protected final Set<String> filesWithFeature = new HashSet<>();
-    protected int totalOccurrences = 0;
-    protected final List<FeatureOccurrence> occurrences = new ArrayList<>();
-    protected String currentCommitHash;
+    // OPTYMALIZACJA: Pre-kompilowane wzorce RegEx
+    private static final Pattern BLOCK_COMMENT_PATTERN = Pattern.compile("/\\*.*?\\*/");
+    private static final Pattern LINE_COMMENT_PATTERN = Pattern.compile("(?m)//.*$");
+    private static final Pattern WHITESPACE_PATTERN = Pattern.compile("\\s+");
+    private static final Pattern SPACE_BEFORE_PUNCTUATION_PATTERN = Pattern.compile("\\s+([;,)}\\].])");
+    private static final Pattern SPACE_AFTER_OPENING_PATTERN = Pattern.compile("([({\\[])\\s+");
 
-    // Do deduplikacji
-    private final Set<String> seenFeatures = new HashSet<>();  // między commitami
-    private final Set<String> commitFeatures = new HashSet<>();  // w ramach commita
+    // OPTYMALIZACJA: Cache dla strukturalnych kontekstów - THREAD SAFE
+    private final java.util.concurrent.ConcurrentHashMap<Integer, String> structuralContextCache = new java.util.concurrent.ConcurrentHashMap<>();
+    private final java.util.concurrent.ConcurrentHashMap<String, String> normalizedCodeCache = new java.util.concurrent.ConcurrentHashMap<>();
+
+    // Limity cache'a dla kontroli pamięci
+    private static final int MAX_CACHE_SIZE = 1000;
+
+    // THREAD SAFE: Kolekcje dla deduplikacji i przechowywania wyników
+    protected final java.util.concurrent.ConcurrentHashMap<String, Boolean> filesWithFeature = new java.util.concurrent.ConcurrentHashMap<>();
+    protected final java.util.concurrent.atomic.AtomicInteger totalOccurrences = new java.util.concurrent.atomic.AtomicInteger(0);
+    protected final java.util.concurrent.CopyOnWriteArrayList<FeatureOccurrence> occurrences = new java.util.concurrent.CopyOnWriteArrayList<>();
+    protected volatile String currentCommitHash;
+
+    // THREAD SAFE: Kolekcje do deduplikacji
+    private final java.util.concurrent.ConcurrentHashMap<String, Boolean> seenFeatures = new java.util.concurrent.ConcurrentHashMap<>();  // między commitami
+    private final java.util.concurrent.ConcurrentHashMap<String, Boolean> commitFeatures = new java.util.concurrent.ConcurrentHashMap<>();  // w ramach commita
 
     @Override
     public void setCurrentCommitHash(String commitHash) {
@@ -29,7 +45,7 @@ public abstract class AbstractFeatureAnalyzer implements SyntaxAnalyzerStrategy 
     @Override
     public void reset() {
         filesWithFeature.clear();
-        totalOccurrences = 0;
+        totalOccurrences.set(0);
         occurrences.clear();
         seenFeatures.clear();
         commitFeatures.clear();
@@ -48,12 +64,12 @@ public abstract class AbstractFeatureAnalyzer implements SyntaxAnalyzerStrategy 
 
     @Override
     public Set<String> getFiles() {
-        return new HashSet<>(filesWithFeature);
+        return new HashSet<>(filesWithFeature.keySet());
     }
 
     @Override
     public int getTotalOccurrences() {
-        return totalOccurrences;
+        return totalOccurrences.get();
     }
 
     protected String normalizeCode(String code) {
@@ -61,18 +77,32 @@ public abstract class AbstractFeatureAnalyzer implements SyntaxAnalyzerStrategy 
             return "";
         }
 
+        // Sprawdź cache - thread-safe operacja
+        String cached = normalizedCodeCache.get(code);
+        if (cached != null) {
+            return cached;
+        }
+
+        String result = code;
         // Usuń komentarze blokowe /* ... */
-        code = code.replaceAll("/\\*.*?\\*/", "");
+        result = BLOCK_COMMENT_PATTERN.matcher(result).replaceAll("");
         // Usuń komentarze końca linii - POPRAWKA: użyj Pattern.MULTILINE
-        code = code.replaceAll("(?m)//.*$", "");
+        result = LINE_COMMENT_PATTERN.matcher(result).replaceAll("");
         // Usuń wszystkie białe znaki i zastąp pojedynczą spacją
-        code = code.replaceAll("\\s+", " ");
+        result = WHITESPACE_PATTERN.matcher(result).replaceAll(" ");
         // DODATKOWA NORMALIZACJA: usuń spacje przed znakami interpunkcji
-        code = code.replaceAll("\\s+([;,)}\\].])", "$1");
+        result = SPACE_BEFORE_PUNCTUATION_PATTERN.matcher(result).replaceAll("$1");
         // DODATKOWA NORMALIZACJA: usuń spacje po znakach otwierających
-        code = code.replaceAll("([({\\[])\\s+", "$1");
+        result = SPACE_AFTER_OPENING_PATTERN.matcher(result).replaceAll("$1");
         // Usuń białe znaki z początku i końca
-        return code.trim();
+        result = result.trim();
+
+        // Thread-safe zapisywanie do cache z kontrolą rozmiaru
+        if (normalizedCodeCache.size() < MAX_CACHE_SIZE) {
+            normalizedCodeCache.putIfAbsent(code, result);
+        }
+
+        return result;
     }
 
     // Generuje hash zawartości dla stabilnego kontekstu
@@ -82,19 +112,37 @@ public abstract class AbstractFeatureAnalyzer implements SyntaxAnalyzerStrategy 
         }
         // Normalizuj zawartość przed hashowaniem
         String normalized = normalizeCode(content);
-        // Użyj bezpiecznego hash
-        return String.valueOf(normalized.hashCode());
+        // Użyj bezpiecznego hash - zabezpieczenie przed Integer.MIN_VALUE
+        int hashCode = normalized.hashCode();
+        return String.valueOf(hashCode == Integer.MIN_VALUE ? 0 : Math.abs(hashCode));
     }
 
-    // NOWA METODA: Generuje strukturalny kontekst z JavaParser AST
+    // NOWA METODA: Generuje strukturalny kontekst z JavaParser AST - THREAD SAFE
     protected String generateStructuralContext(com.github.javaparser.ast.Node astNode) {
         if (astNode == null) {
             LOGGER.warning("Null astNode passed to generateStructuralContext");
             return "unknown::";
         }
 
+        // NAPRAWKA: Używaj pozycji węzła w cache zamiast samego hashCode
+        // Oba wystąpienia "var x = 5" mają identyczny hashCode, ale różne pozycje
+        String cacheKey = astNode.hashCode() + ":" + astNode.getBegin().map(pos -> pos.line + ":" + pos.column).orElse("unknown");
+        String cached = structuralContextCache.get(cacheKey.hashCode());
+        if (cached != null) {
+            System.out.println("DEBUG: Używam cache dla klucza: " + cacheKey);
+            return cached;
+        }
+
+        System.out.println("DEBUG: Generuję nowy kontekst dla klucza: " + cacheKey);
         StructuralContextBuilder builder = new StructuralContextBuilder(astNode);
-        return builder.build();
+        String context = builder.build();
+
+        // Thread-safe zapisywanie do cache z kontrolą rozmiaru
+        if (structuralContextCache.size() < MAX_CACHE_SIZE) {
+            structuralContextCache.putIfAbsent(cacheKey.hashCode(), context);
+        }
+
+        return context;
     }
 
     // Wydzielona klasa dla budowania kontekstu strukturalnego
@@ -242,17 +290,39 @@ public abstract class AbstractFeatureAnalyzer implements SyntaxAnalyzerStrategy 
                     processIfStatement(ifStmt);
                 case com.github.javaparser.ast.stmt.TryStmt tryStmt ->
                     processTryStatement(tryStmt);
-                case com.github.javaparser.ast.stmt.SynchronizedStmt ignored ->
-                    scope.insert(0, "sync:");
-                case com.github.javaparser.ast.stmt.ForStmt forStmt ->
-                    scope.insert(0, "for").insert(3, String.valueOf(forStmt.hashCode())).insert(scope.length(), ":");
-                case com.github.javaparser.ast.stmt.ForEachStmt forEachStmt ->
-                    scope.insert(0, "foreach").insert(7, String.valueOf(forEachStmt.hashCode())).insert(scope.length(), ":");
-                case com.github.javaparser.ast.stmt.WhileStmt whileStmt ->
-                    scope.insert(0, "while").insert(5, String.valueOf(whileStmt.hashCode())).insert(scope.length(), ":");
+                case com.github.javaparser.ast.stmt.SynchronizedStmt syncStmt ->
+                    processSynchronizedStatement(syncStmt);
+                case com.github.javaparser.ast.stmt.ForStmt forStmt -> {
+                    int hashCode = forStmt.hashCode() == Integer.MIN_VALUE ? 0 : Math.abs(forStmt.hashCode());
+                    scope.insert(0, "for").insert(3, String.valueOf(hashCode)).insert(scope.length(), ":");
+                }
+                case com.github.javaparser.ast.stmt.ForEachStmt forEachStmt -> {
+                    int hashCode = forEachStmt.hashCode() == Integer.MIN_VALUE ? 0 : Math.abs(forEachStmt.hashCode());
+                    scope.insert(0, "foreach").insert(7, String.valueOf(hashCode)).insert(scope.length(), ":");
+                }
+                case com.github.javaparser.ast.stmt.WhileStmt whileStmt -> {
+                    int hashCode = whileStmt.hashCode() == Integer.MIN_VALUE ? 0 : Math.abs(whileStmt.hashCode());
+                    scope.insert(0, "while").insert(5, String.valueOf(hashCode)).insert(scope.length(), ":");
+                }
                 default -> {
                     // Ignoruj inne typy węzłów
                 }
+            }
+        }
+
+        // NAPRAWKA: Sprawdź czy astNode jest rzeczywiście wewnątrz synchronized bloku
+        private void processSynchronizedStatement(com.github.javaparser.ast.stmt.SynchronizedStmt syncStmt) {
+            boolean isInsideSync = syncStmt.getBody().isAncestorOf(astNode);
+            System.out.println("DEBUG processSynchronizedStatement:");
+            System.out.println("  astNode: " + astNode);
+            System.out.println("  syncStmt.getBody(): " + syncStmt.getBody());
+            System.out.println("  isAncestorOf: " + isInsideSync);
+
+            if (isInsideSync) {
+                System.out.println("  DODAJĘ sync: do scope");
+                scope.insert(0, "sync:");
+            } else {
+                System.out.println("  NIE DODAJĘ sync: - astNode jest poza synchronized blokiem");
             }
         }
 
@@ -307,11 +377,31 @@ public abstract class AbstractFeatureAnalyzer implements SyntaxAnalyzerStrategy 
         String structuralKey = filePath + "::" + structuralContext + "::" + normalizedCode;
         String commitKey = structuralKey + "::" + specificContext;
 
-        if (!commitFeatures.add(commitKey)) {
+        // DEBUG dla synchronized bloków
+        System.out.println("=== DEBUG isNewFeatureByStructure ===");
+        System.out.println("filePath: " + filePath);
+        System.out.println("code: " + code);
+        System.out.println("normalizedCode: " + normalizedCode);
+        System.out.println("structuralContext: " + structuralContext);
+        System.out.println("specificContext: " + specificContext);
+        System.out.println("structuralKey: " + structuralKey);
+        System.out.println("commitKey: " + commitKey);
+
+        // NAPRAWKA: putIfAbsent zwraca null jeśli klucz nie istniał, poprzednią wartość jeśli istniał
+        boolean isNewInCommit = commitFeatures.putIfAbsent(commitKey, Boolean.TRUE) == null;
+        System.out.println("isNewInCommit: " + isNewInCommit);
+
+        if (!isNewInCommit) {
+            System.out.println("ODRZUCONE: Już widzieliśmy ten kod w tym kontekście w tym commicie");
             return false;  // Już widzieliśmy ten kod w tym kontekście w tym commicie
         }
 
-        return seenFeatures.add(structuralKey);
+        boolean isNewOverall = seenFeatures.putIfAbsent(structuralKey, Boolean.TRUE) == null;
+        System.out.println("isNewOverall: " + isNewOverall);
+        System.out.println("REZULTAT: " + isNewOverall);
+        System.out.println("==========================================");
+
+        return isNewOverall;
     }
 
     // NOWA METODA: Dodawanie wystąpienia z deduplikacją strukturalną
@@ -326,8 +416,8 @@ public abstract class AbstractFeatureAnalyzer implements SyntaxAnalyzerStrategy 
             String structuralContext = generateStructuralContext(astNode);
 
             if (isNewFeatureByStructure(filePath, lineContent, structuralContext, specificContext)) {
-                filesWithFeature.add(filePath);
-                totalOccurrences++;
+                filesWithFeature.put(filePath, Boolean.TRUE);
+                totalOccurrences.incrementAndGet();
 
                 FeatureOccurrence occurrence = createFeatureOccurrence(filePath, line, lineContent, context,
                     structuralContext, specificContext);

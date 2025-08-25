@@ -6,14 +6,23 @@ import com.github.javaparser.ast.visitor.VoidVisitorAdapter;
 import com.github.javaparser.ast.expr.VariableDeclarationExpr;
 
 import java.nio.file.Path;
-import java.util.HashSet;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.Set;
 import java.util.logging.Logger;
 import java.util.logging.Level;
+import java.util.regex.Pattern;
 
 public class VarUsageAnalyzer extends AbstractFeatureAnalyzer {
 
     private static final Logger LOGGER = Logger.getLogger(VarUsageAnalyzer.class.getName());
+
+    // OPTYMALIZACJA: Pre-kompilowane wzorce RegEx dla wyciągania var deklaracji
+    private static final Pattern VAR_DECLARATION_PATTERN = Pattern.compile("\\bvar\\s+\\w+\\s*=.*");
+    private static final Pattern VAR_KEYWORD_PATTERN = Pattern.compile("\\bvar\\b");
+
+    // OPTYMALIZACJA: Cache dla podziału linii (thread-safe)
+    private static final ConcurrentHashMap<String, String[]> fileLineCache = new ConcurrentHashMap<>();
+    private static final int MAX_FILE_CACHE_SIZE = 50;
 
     @Override
     public void analyze(CompilationUnit cu, Path filePath, String fileContent) {
@@ -23,8 +32,8 @@ public class VarUsageAnalyzer extends AbstractFeatureAnalyzer {
             return;
         }
 
-        // Zestaw do śledzenia już przetworzonych linii w tym pliku
-        Set<Integer> processedLines = new HashSet<>();
+        // OPTYMALIZACJA: Thread-safe Set dla śledzenia przetworzonych linii
+        Set<Integer> processedLines = ConcurrentHashMap.newKeySet();
         VarTypeVisitor visitor = new VarTypeVisitor(processedLines, filePath, fileContent);
         cu.accept(visitor, null);
     }
@@ -32,6 +41,24 @@ public class VarUsageAnalyzer extends AbstractFeatureAnalyzer {
     @Override
     public String getName() {
         return "Var Keyword Usage";
+    }
+
+    // OPTYMALIZACJA: Thread-safe cache dla podziału pliku na linie
+    private String[] getFileLines(String fileContent) {
+        String cacheKey = String.valueOf(fileContent.hashCode());
+
+        String[] cached = fileLineCache.get(cacheKey);
+        if (cached != null) {
+            return cached;
+        }
+
+        String[] lines = fileContent.split("\n");
+
+        if (fileLineCache.size() < MAX_FILE_CACHE_SIZE) {
+            fileLineCache.putIfAbsent(cacheKey, lines);
+        }
+
+        return lines;
     }
 
     // Wydzielona klasa dla zmniejszenia złożoności kognitywnej
@@ -49,6 +76,7 @@ public class VarUsageAnalyzer extends AbstractFeatureAnalyzer {
         @Override
         public void visit(VarType n, Void arg) {
             n.getBegin().ifPresent(position -> {
+                System.out.println("DEBUG VarType: linia " + position.line + ", zawartość: " + n.toString());
                 if (!processedLines.contains(position.line)) {
                     LOGGER.log(Level.FINE, "JavaParser wykrył VarType na linii: {0}", position.line);
                     processedLines.add(position.line);
@@ -63,6 +91,7 @@ public class VarUsageAnalyzer extends AbstractFeatureAnalyzer {
         @Override
         public void visit(VariableDeclarationExpr n, Void arg) {
             n.getBegin().ifPresent(position -> {
+                System.out.println("DEBUG VariableDeclarationExpr: linia " + position.line + ", zawartość: " + n.toString());
                 if (processedLines.contains(position.line)) {
                     LOGGER.log(Level.FINE, "Linia {0} już przetworzona - pomijam VariableDeclaration", position.line);
                     super.visit(n, arg);
@@ -70,22 +99,24 @@ public class VarUsageAnalyzer extends AbstractFeatureAnalyzer {
                 }
 
                 if (containsVarType(n)) {
+                    System.out.println("DEBUG VariableDeclarationExpr zawiera var: linia " + position.line);
                     LOGGER.log(Level.FINE, "Fallback wykrył var w deklaracji na linii {0}: {1}",
                         new Object[]{position.line, n.toString()});
                     processedLines.add(position.line);
                     handleVarOccurrence(position.line, n, "VariableDeclaration");
+                } else {
+                    System.out.println("DEBUG VariableDeclarationExpr NIE zawiera var: linia " + position.line);
                 }
             });
             super.visit(n, arg);
         }
 
+        // OPTYMALIZACJA: Zoptymalizowana metoda sprawdzania var z wczesnym return
         private boolean containsVarType(VariableDeclarationExpr n) {
             return n.getVariables().stream()
                 .anyMatch(variable -> {
                     String typeString = variable.getType().toString();
-                    return typeString.equals("var") ||
-                           typeString.contains("var") ||
-                           variable.getType() instanceof VarType;
+                    return typeString.contains("var") || variable.getType() instanceof VarType;
                 });
         }
 
@@ -101,37 +132,37 @@ public class VarUsageAnalyzer extends AbstractFeatureAnalyzer {
         }
     }
 
-    // Wydzielona klasa dla przetwarzania wystąpień var
+    // OPTYMALIZACJA: Zoptymalizowane metody pomocnicze z cache'owaniem linii
     private class VarOccurrenceProcessor {
         private final int line;
         private final Path filePath;
-        private final String fileContent;
         private final com.github.javaparser.ast.Node astNode;
+        private final String[] cachedLines;
 
         public VarOccurrenceProcessor(int line, Path filePath, String fileContent, com.github.javaparser.ast.Node astNode) {
             this.line = line;
             this.filePath = filePath;
-            this.fileContent = fileContent;
             this.astNode = astNode;
+            this.cachedLines = getFileLines(fileContent); // Używamy cache'owanej metody
         }
 
         public void process() {
             long contextStart = Math.max(0L, line - 3L);
-            long contextEnd = Math.min(getLineCount(), line + 3L);
+            long contextEnd = Math.min(cachedLines.length, line + 3L);
 
-            String lineContent = getLineContent(line - 1);
+            String lineContent = getLineContentOptimized(line - 1);
             LOGGER.log(Level.FINE, "Oryginalna linia: {0}", lineContent);
 
             int finalLine = line;
 
-            // Sprawdź czy linia zawiera "var", jeśli nie - szukaj w kolejnych liniach
-            if (!lineContent.contains("var")) {
-                LineSearchResult searchResult = findVarInNextLines(line);
+            // OPTYMALIZACJA: Używamy pre-kompilowanego wzorca zamiast contains()
+            if (!VAR_KEYWORD_PATTERN.matcher(lineContent).find()) {
+                LineSearchResult searchResult = findVarInNextLinesOptimized(line);
                 if (searchResult != null) {
                     lineContent = searchResult.content;
                     finalLine = searchResult.lineNumber;
                     contextStart = Math.max(0L, finalLine - 3L);
-                    contextEnd = Math.min(getLineCount(), finalLine + 3L);
+                    contextEnd = Math.min(cachedLines.length, finalLine + 3L);
                     LOGGER.log(Level.FINE, "KOREKCJA - Używam linii {0}: {1}",
                         new Object[]{finalLine, lineContent});
                 }
@@ -140,9 +171,12 @@ public class VarUsageAnalyzer extends AbstractFeatureAnalyzer {
             String varFragment = extractVarDeclaration(lineContent);
             LOGGER.log(Level.FINE, "Wyciągnięty fragment var: {0}", varFragment);
 
-            String context = getContextLines(contextStart, contextEnd);
+            String context = getContextLinesOptimized(contextStart, contextEnd);
             String contentHash = generateContentHash(varFragment);
-            String specificContext = "var-hash:" + contentHash;
+
+            // NAPRAWKA: Uwzględnij kontekst strukturalny w specificContext
+            String structuralContext = generateStructuralContext(astNode);
+            String specificContext = "var-hash:" + contentHash + ":struct:" + structuralContext;
 
             LOGGER.log(Level.FINE, "Wywołuję addFeatureOccurrenceByStructure dla linii {0} z fragmentem: {1}",
                 new Object[]{finalLine, varFragment});
@@ -159,41 +193,37 @@ public class VarUsageAnalyzer extends AbstractFeatureAnalyzer {
             LOGGER.log(Level.FINE, "Zakończono addFeatureOccurrenceByStructure dla linii: {0}", finalLine);
         }
 
-        private int getLineCount() {
-            return (int) fileContent.lines().count();
+        // OPTYMALIZACJA: Używamy cache'owanych linii zamiast stream operations
+        private String getLineContentOptimized(int lineIndex) {
+            return (lineIndex >= 0 && lineIndex < cachedLines.length) ? cachedLines[lineIndex] : "";
         }
 
-        private String getLineContent(int lineIndex) {
-            return fileContent.lines().skip(lineIndex).findFirst().orElse("");
+        private String getContextLinesOptimized(long start, long end) {
+            StringBuilder contextBuilder = new StringBuilder();
+            for (int i = (int) start; i < end && i < cachedLines.length; i++) {
+                if (!contextBuilder.isEmpty()) {
+                    contextBuilder.append('\n');
+                }
+                contextBuilder.append(cachedLines[i]);
+            }
+            return contextBuilder.toString();
         }
 
-        private String getContextLines(long start, long end) {
-            return fileContent.lines()
-                    .skip(start)
-                    .limit(end - start)
-                    .collect(java.util.stream.Collectors.joining("\n"));
-        }
-
-        private LineSearchResult findVarInNextLines(int startLine) {
+        private LineSearchResult findVarInNextLinesOptimized(int startLine) {
             for (int offset = 1; offset <= 5; offset++) {
-                String nextLineContent = getLineContent(startLine - 1 + offset);
-                LOGGER.log(Level.FINE, "Sprawdzam linię {0}: {1}",
-                    new Object[]{startLine + offset, nextLineContent});
-                if (nextLineContent.contains("var")) {
-                    return new LineSearchResult(startLine + offset, nextLineContent);
+                int targetIndex = startLine - 1 + offset;
+                if (targetIndex < cachedLines.length) {
+                    String nextLineContent = cachedLines[targetIndex];
+                    LOGGER.log(Level.FINE, "Sprawdzam linię {0}: {1}",
+                        new Object[]{startLine + offset, nextLineContent});
+
+                    // OPTYMALIZACJA: Używamy pre-kompilowanego wzorca
+                    if (VAR_KEYWORD_PATTERN.matcher(nextLineContent).find()) {
+                        return new LineSearchResult(startLine + offset, nextLineContent);
+                    }
                 }
             }
             return null;
-        }
-    }
-
-    private static class LineSearchResult {
-        final int lineNumber;
-        final String content;
-
-        LineSearchResult(int lineNumber, String content) {
-            this.lineNumber = lineNumber;
-            this.content = content;
         }
     }
 
@@ -203,9 +233,25 @@ public class VarUsageAnalyzer extends AbstractFeatureAnalyzer {
             return "";
         }
 
+        // OPTYMALIZACJA: Używamy pre-kompilowanego wzorca zamiast indexOf
+        if (!VAR_KEYWORD_PATTERN.matcher(lineContent).find()) {
+            return lineContent; // Fallback
+        }
+
+        // Próbuj dopasować pełny wzorzec var deklaracji
+        java.util.regex.Matcher declarationMatcher = VAR_DECLARATION_PATTERN.matcher(lineContent);
+        if (declarationMatcher.find()) {
+            return declarationMatcher.group().trim();
+        }
+
+        // Fallback do poprzedniej metody dla skomplikowanych przypadków
+        return extractVarDeclarationFallback(lineContent);
+    }
+
+    private String extractVarDeclarationFallback(String lineContent) {
         int varIndex = lineContent.indexOf("var");
         if (varIndex == -1) {
-            return lineContent; // Fallback
+            return lineContent;
         }
 
         int start = findDeclarationStart(lineContent, varIndex);
@@ -250,5 +296,15 @@ public class VarUsageAnalyzer extends AbstractFeatureAnalyzer {
     private boolean isEndKeyword(String lineContent, int position) {
         String remaining = lineContent.substring(position).trim();
         return remaining.startsWith("return ") || remaining.startsWith("} ");
+    }
+
+    private static class LineSearchResult {
+        final int lineNumber;
+        final String content;
+
+        LineSearchResult(int lineNumber, String content) {
+            this.lineNumber = lineNumber;
+            this.content = content;
+        }
     }
 }

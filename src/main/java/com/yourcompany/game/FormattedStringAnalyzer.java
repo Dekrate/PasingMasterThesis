@@ -13,6 +13,11 @@ import java.util.Optional;
  */
 public class FormattedStringAnalyzer extends AbstractFeatureAnalyzer {
 
+    // OPTYMALIZACJA: Cache dla podziału linii - thread-safe
+    private static final java.util.concurrent.ConcurrentHashMap<String, String[]> linesSplitCache =
+        new java.util.concurrent.ConcurrentHashMap<>();
+    private static final int MAX_LINES_CACHE_SIZE = 100;
+
     @Override
     public String getName() {
         return "Template Strings";
@@ -21,74 +26,87 @@ public class FormattedStringAnalyzer extends AbstractFeatureAnalyzer {
     @Override
     public void analyze(CompilationUnit cu, Path filePath, String fileContent) {
         VoidVisitorAdapter<Void> visitor = new VoidVisitorAdapter<>() {
-	        @Override
-	        public void visit(MethodCallExpr n, Void arg) {
-		        Optional<Expression> scope = n.getScope();
-		        if (scope.isPresent() &&
-				        scope.get().toString().equals("STR") &&
-				        n.getName().asString().equals("\"") &&
-				        n.toString().contains("\\{")) {
+            @Override
+            public void visit(MethodCallExpr n, Void arg) {
+                Optional<Expression> scope = n.getScope();
+                if (scope.isPresent() &&
+                        scope.get().toString().equals("STR") &&
+                        n.getName().asString().equals("\"") &&
+                        n.toString().contains("\\{")) {
 
-			        n.getRange().ifPresent(range -> {
-				        int lineNumber = range.begin.line;
-
-                        System.out.println("DEBUG FormattedString: JavaParser wykrył template string na linii: " + lineNumber);
+                    n.getRange().ifPresent(range -> {
+                        int lineNumber = range.begin.line;
                         handleTemplateStringOccurrence(lineNumber, filePath, fileContent, n);
-			        });
-		        }
-		        super.visit(n, arg);
-	        }
+                    });
+                }
+                super.visit(n, arg);
+            }
 
             private void handleTemplateStringOccurrence(int line, Path filePath, String fileContent, MethodCallExpr astNode) {
-                System.out.println("DEBUG FormattedString: Przetwarzam linię " + line);
-
+                // OPTYMALIZACJA: Używamy cache dla podziału linii
+                String[] lines = getFileLines(fileContent);
                 long contextStart = Math.max(0L, line - 3L);
-                long contextEnd = Math.min(fileContent.split("\n").length, line + 3L);
+                long contextEnd = Math.min(lines.length, line + 3L);
 
-                String lineContent = fileContent.lines().skip((long)(line - 1)).findFirst().orElse("");
-                System.out.println("DEBUG FormattedString: Oryginalna linia: " + lineContent);
+                String lineContent = (line <= lines.length) ? lines[line - 1] : "";
 
                 int finalLine = line;
 
-                // KLUCZOWE: Jeśli linia nie zawiera STR.", szukaj w kolejnych liniach (dla wielu adnotacji)
+                // Jeśli linia nie zawiera STR.", szukaj w kolejnych liniach
                 if (!lineContent.contains("STR.\"")) {
-                    // Sprawdzaj do 5 linii niżej (dla przypadków z wieloma adnotacjami)
-                    for (int offset = 1; offset <= 5; offset++) {
-                        String nextLineContent = fileContent.lines().skip((long)(line - 1 + offset)).findFirst().orElse("");
-                        System.out.println("DEBUG FormattedString: Sprawdzam linię " + (line + offset) + ": " + nextLineContent);
+                    for (int offset = 1; offset <= 5 && (line + offset - 1) < lines.length; offset++) {
+                        String nextLineContent = lines[line + offset - 1];
                         if (nextLineContent.contains("STR.\"")) {
                             lineContent = nextLineContent;
                             finalLine = line + offset;
                             contextStart = Math.max(0L, finalLine - 3L);
-                            contextEnd = Math.min(fileContent.split("\n").length, finalLine + 3L);
-                            System.out.println("DEBUG FormattedString: KOREKCJA - Używam linii " + finalLine + ": " + lineContent);
+                            contextEnd = Math.min(lines.length, finalLine + 3L);
                             break;
                         }
                     }
                 }
 
-                String context = fileContent.lines()
-                        .skip(contextStart)
-                        .limit(contextEnd - contextStart)
-                        .collect(java.util.stream.Collectors.joining("\n"));
+                // OPTYMALIZACJA: StringBuilder zamiast stream collectors
+                StringBuilder contextBuilder = new StringBuilder();
+                for (int i = (int) contextStart; i < contextEnd && i < lines.length; i++) {
+                    if (!contextBuilder.isEmpty()) {
+                        contextBuilder.append('\n');
+                    }
+                    contextBuilder.append(lines[i]);
+                }
+                String context = contextBuilder.toString();
 
-                // Kontekst dla template string: hash zawartości zamiast stałego stringa (stabilny między commitami)
+                // Kontekst dla template string: hash zawartości (stabilny między commitami)
                 String contentHash = generateContentHash(lineContent);
                 String specificContext = "template-string-hash:" + contentHash;
 
-                System.out.println("DEBUG FormattedString: Wywołuję addFeatureOccurrenceByStructure dla linii " + finalLine + " z kodem: " + lineContent);
-
-                // UŻYWAMY NOWEJ METODY STRUKTURALNEJ - przekazujemy węzeł AST
+                // UŻYWAMY NOWEJ METODY STRUKTURALNEJ
                 addFeatureOccurrenceByStructure(
                     filePath.toAbsolutePath().toString(),
-                    finalLine,  // Używaj skorygowanej linii (dla logów)
-                    lineContent, // Używaj skorygowanej zawartości
+                    finalLine,
+                    lineContent,
                     context,
                     astNode, // Przekazujemy węzeł AST do analizy strukturalnej
                     specificContext  // Kontekst: template-string-hash:12345
                 );
+            }
 
-                System.out.println("DEBUG FormattedString: Zakończono addFeatureOccurrenceByStructure dla linii: " + finalLine);
+            // OPTYMALIZACJA: Thread-safe cache dla podziału linii
+            private String[] getFileLines(String fileContent) {
+                String cacheKey = String.valueOf(fileContent.hashCode());
+
+                String[] cached = linesSplitCache.get(cacheKey);
+                if (cached != null) {
+                    return cached;
+                }
+
+                String[] lines = fileContent.split("\n");
+
+                if (linesSplitCache.size() < MAX_LINES_CACHE_SIZE) {
+                    linesSplitCache.putIfAbsent(cacheKey, lines);
+                }
+
+                return lines;
             }
         };
 
