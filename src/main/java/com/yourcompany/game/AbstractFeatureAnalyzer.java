@@ -4,8 +4,12 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.logging.Logger;
+import java.util.logging.Level;
 
 public abstract class AbstractFeatureAnalyzer implements SyntaxAnalyzerStrategy {
+    private static final Logger LOGGER = Logger.getLogger(AbstractFeatureAnalyzer.class.getName());
+
     protected final Set<String> filesWithFeature = new HashSet<>();
     protected int totalOccurrences = 0;
     protected final List<FeatureOccurrence> occurrences = new ArrayList<>();
@@ -34,7 +38,7 @@ public abstract class AbstractFeatureAnalyzer implements SyntaxAnalyzerStrategy 
 
     @Override
     public List<FeatureOccurrence> getOccurrences() {
-        return occurrences;
+        return new ArrayList<>(occurrences); // Defensive copy
     }
 
     @Override
@@ -53,6 +57,10 @@ public abstract class AbstractFeatureAnalyzer implements SyntaxAnalyzerStrategy 
     }
 
     protected String normalizeCode(String code) {
+        if (code == null) {
+            return "";
+        }
+
         // Usuń komentarze blokowe /* ... */
         code = code.replaceAll("/\\*.*?\\*/", "");
         // Usuń komentarze końca linii - POPRAWKA: użyj Pattern.MULTILINE
@@ -74,191 +82,285 @@ public abstract class AbstractFeatureAnalyzer implements SyntaxAnalyzerStrategy 
         }
         // Normalizuj zawartość przed hashowaniem
         String normalized = normalizeCode(content);
-        // Użyj prostego hash (wystarczy dla kontekstu)
-        return String.valueOf(Math.abs(normalized.hashCode()));
+        // Użyj bezpiecznego hash
+        return String.valueOf(normalized.hashCode());
     }
 
     // NOWA METODA: Generuje strukturalny kontekst z JavaParser AST
     protected String generateStructuralContext(com.github.javaparser.ast.Node astNode) {
-        StringBuilder context = new StringBuilder();
+        if (astNode == null) {
+            LOGGER.warning("Null astNode passed to generateStructuralContext");
+            return "unknown::";
+        }
 
-        // Wędruj w górę AST żeby znaleźć kontekst strukturalny
-        com.github.javaparser.ast.Node current = astNode.getParentNode().orElse(null);
+        StructuralContextBuilder builder = new StructuralContextBuilder(astNode);
+        return builder.build();
+    }
 
-        // Dodaj specjalną obsługę dla różnych scope'ów w metodach
-        String methodScope = detectMethodScope(astNode);
+    // Wydzielona klasa dla budowania kontekstu strukturalnego
+    private static class StructuralContextBuilder {
+        private final StringBuilder context = new StringBuilder();
+        private final com.github.javaparser.ast.Node astNode;
 
-        while (current != null) {
-            if (current instanceof com.github.javaparser.ast.body.EnumConstantDeclaration enumConstant) {
-                // WAŻNE: Sprawdź enum constant PIERWSZY - przed metodami
-                context.append("enumconstant:" + enumConstant.getNameAsString() + "::");
-            } else if (current instanceof com.github.javaparser.ast.body.MethodDeclaration method) {
-                // Dodaj informację o scope jeśli istnieje
-                String methodContext = "method:" + method.getNameAsString();
-                if (!methodScope.isEmpty()) {
-                    methodContext += ":" + methodScope;
+        public StructuralContextBuilder(com.github.javaparser.ast.Node astNode) {
+            this.astNode = astNode;
+        }
+
+        public String build() {
+            com.github.javaparser.ast.Node current = astNode.getParentNode().orElse(null);
+            String methodScope = detectMethodScope();
+
+            while (current != null) {
+                processCurrentNode(current, methodScope);
+                current = current.getParentNode().orElse(null);
+            }
+
+            if (context.isEmpty()) {
+                context.append("top-level::");
+            }
+
+            return context.toString();
+        }
+
+        private void processCurrentNode(com.github.javaparser.ast.Node current, String methodScope) {
+            switch (current) {
+                case com.github.javaparser.ast.body.EnumConstantDeclaration enumConstant ->
+                    appendEnumConstant(enumConstant);
+                case com.github.javaparser.ast.body.MethodDeclaration method ->
+                    appendMethod(method, methodScope);
+                case com.github.javaparser.ast.body.ConstructorDeclaration constructor ->
+                    appendConstructor(constructor, methodScope);
+                case com.github.javaparser.ast.body.ClassOrInterfaceDeclaration clazz ->
+                    appendClass(clazz);
+                case com.github.javaparser.ast.body.RecordDeclaration recordDecl ->
+                    appendRecord(recordDecl);
+                case com.github.javaparser.ast.body.EnumDeclaration enumDecl -> {
+                    appendEnum(enumDecl);
+                    return; // Break - znaleźliśmy enum
                 }
-                context.append(methodContext + "::");
-                // NIE BREAK - kontynuuj szukanie enum constant wyżej w hierarchii
-            } else if (current instanceof com.github.javaparser.ast.body.ConstructorDeclaration constructor) {
-                String constructorContext = "constructor:" + constructor.getNameAsString();
-                if (!methodScope.isEmpty()) {
-                    constructorContext += ":" + methodScope;
+                case com.github.javaparser.ast.stmt.BlockStmt blockStmt ->
+                    processBlockStatement(blockStmt);
+                case com.github.javaparser.ast.expr.ObjectCreationExpr objectCreation ->
+                    appendAnonymousClass(objectCreation);
+                default -> {
+                    // Ignoruj inne typy węzłów
                 }
-                context.append(constructorContext + "::");
-                // NIE BREAK - kontynuuj szukanie enum constant wyżej w hierarchii
-            } else if (current instanceof com.github.javaparser.ast.body.ClassOrInterfaceDeclaration clazz) {
-                // Sprawdź czy to klasa anonimowa
-                if (clazz.isLocalClassDeclaration()) {
-                    context.append("localclass:" + clazz.getNameAsString() + "::");
-                } else {
-                    context.append("class:" + clazz.getNameAsString() + "::");
-                }
-            } else if (current instanceof com.github.javaparser.ast.body.RecordDeclaration record) {
-                context.append("record:" + record.getNameAsString() + "::");
-            } else if (current instanceof com.github.javaparser.ast.body.EnumDeclaration enumDecl) {
-                context.append("enum:" + enumDecl.getNameAsString() + "::");
-                // BREAK tutaj - znaleźliśmy enum, to jest wystarczający kontekst
-                break;
-            } else if (current instanceof com.github.javaparser.ast.stmt.BlockStmt) {
-                // Dla bloków, sprawdź czy to inicjalizator statyczny
-                if (current.getParentNode().isPresent() &&
-                    current.getParentNode().get() instanceof com.github.javaparser.ast.body.InitializerDeclaration initializer) {
+            }
+        }
+
+        private void appendEnumConstant(com.github.javaparser.ast.body.EnumConstantDeclaration enumConstant) {
+            context.append("enumconstant:").append(enumConstant.getNameAsString()).append("::");
+        }
+
+        private void appendMethod(com.github.javaparser.ast.body.MethodDeclaration method, String methodScope) {
+            context.append("method:").append(method.getNameAsString());
+            if (!methodScope.isEmpty()) {
+                context.append(":").append(methodScope);
+            }
+            context.append("::");
+        }
+
+        private void appendConstructor(com.github.javaparser.ast.body.ConstructorDeclaration constructor, String methodScope) {
+            context.append("constructor:").append(constructor.getNameAsString());
+            if (!methodScope.isEmpty()) {
+                context.append(":").append(methodScope);
+            }
+            context.append("::");
+        }
+
+        private void appendClass(com.github.javaparser.ast.body.ClassOrInterfaceDeclaration clazz) {
+            if (clazz.isLocalClassDeclaration()) {
+                context.append("localclass:").append(clazz.getNameAsString()).append("::");
+            } else {
+                context.append("class:").append(clazz.getNameAsString()).append("::");
+            }
+        }
+
+        private void appendRecord(com.github.javaparser.ast.body.RecordDeclaration recordDecl) {
+            context.append("record:").append(recordDecl.getNameAsString()).append("::");
+        }
+
+        private void appendEnum(com.github.javaparser.ast.body.EnumDeclaration enumDecl) {
+            context.append("enum:").append(enumDecl.getNameAsString()).append("::");
+        }
+
+        private void processBlockStatement(com.github.javaparser.ast.stmt.BlockStmt blockStmt) {
+            blockStmt.getParentNode().ifPresent(parent -> {
+                if (parent instanceof com.github.javaparser.ast.body.InitializerDeclaration initializer) {
                     if (initializer.isStatic()) {
                         context.append("static-block::");
                     } else {
                         context.append("instance-block::");
                     }
                 }
-            } else if (current instanceof com.github.javaparser.ast.expr.ObjectCreationExpr) {
-                // Obsługa klas anonimowych
-                context.append("anonymous:" + getAnonymousClassSignature((com.github.javaparser.ast.expr.ObjectCreationExpr) current) + "::");
-            }
-            current = current.getParentNode().orElse(null);
+            });
         }
 
-        // Jeśli nie znaleziono kontekstu, użyj "top-level"
-        if (context.isEmpty()) {
-            context.append("top-level::");
+        private void appendAnonymousClass(com.github.javaparser.ast.expr.ObjectCreationExpr objectCreation) {
+            String signature = getAnonymousClassSignature(objectCreation);
+            context.append("anonymous:").append(signature).append("::");
         }
 
-        return context.toString();
+        private String detectMethodScope() {
+            MethodScopeDetector detector = new MethodScopeDetector(astNode);
+            return detector.detect();
+        }
     }
 
-    // NOWA METODA: Wykrywa scope w metodzie (if/else, try/catch, synchronized, for loops)
-    private String detectMethodScope(com.github.javaparser.ast.Node astNode) {
-        StringBuilder scope = new StringBuilder();
-        com.github.javaparser.ast.Node current = astNode.getParentNode().orElse(null);
+    // Wydzielona klasa dla wykrywania scope w metodach
+    private static class MethodScopeDetector {
+        private final StringBuilder scope = new StringBuilder();
+        private final com.github.javaparser.ast.Node astNode;
 
-        while (current != null) {
-            if (current instanceof com.github.javaparser.ast.body.MethodDeclaration ||
-                current instanceof com.github.javaparser.ast.body.ConstructorDeclaration) {
-                break; // Dotarliśmy do metody/konstruktora - koniec scope'u
+        public MethodScopeDetector(com.github.javaparser.ast.Node astNode) {
+            this.astNode = astNode;
+        }
+
+        public String detect() {
+            com.github.javaparser.ast.Node current = astNode.getParentNode().orElse(null);
+
+            while (current != null) {
+                if (isMethodOrConstructor(current)) {
+                    break;
+                }
+
+                processScopeNode(current);
+                current = current.getParentNode().orElse(null);
             }
 
-            if (current instanceof com.github.javaparser.ast.stmt.IfStmt) {
-                // Określ czy jesteśmy w then czy else
-                com.github.javaparser.ast.stmt.IfStmt ifStmt = (com.github.javaparser.ast.stmt.IfStmt) current;
-                if (ifStmt.getThenStmt().isAncestorOf(astNode)) {
-                    scope.insert(0, "if:");
-                } else if (ifStmt.getElseStmt().isPresent() && ifStmt.getElseStmt().get().isAncestorOf(astNode)) {
-                    scope.insert(0, "else:");
+            return scope.toString();
+        }
+
+        private boolean isMethodOrConstructor(com.github.javaparser.ast.Node node) {
+            return node instanceof com.github.javaparser.ast.body.MethodDeclaration ||
+                   node instanceof com.github.javaparser.ast.body.ConstructorDeclaration;
+        }
+
+        private void processScopeNode(com.github.javaparser.ast.Node current) {
+            switch (current) {
+                case com.github.javaparser.ast.stmt.IfStmt ifStmt ->
+                    processIfStatement(ifStmt);
+                case com.github.javaparser.ast.stmt.TryStmt tryStmt ->
+                    processTryStatement(tryStmt);
+                case com.github.javaparser.ast.stmt.SynchronizedStmt ignored ->
+                    scope.insert(0, "sync:");
+                case com.github.javaparser.ast.stmt.ForStmt forStmt ->
+                    scope.insert(0, "for").insert(3, String.valueOf(forStmt.hashCode())).insert(scope.length(), ":");
+                case com.github.javaparser.ast.stmt.ForEachStmt forEachStmt ->
+                    scope.insert(0, "foreach").insert(7, String.valueOf(forEachStmt.hashCode())).insert(scope.length(), ":");
+                case com.github.javaparser.ast.stmt.WhileStmt whileStmt ->
+                    scope.insert(0, "while").insert(5, String.valueOf(whileStmt.hashCode())).insert(scope.length(), ":");
+                default -> {
+                    // Ignoruj inne typy węzłów
                 }
-            } else if (current instanceof com.github.javaparser.ast.stmt.TryStmt) {
-                com.github.javaparser.ast.stmt.TryStmt tryStmt = (com.github.javaparser.ast.stmt.TryStmt) current;
-                if (tryStmt.getTryBlock().isAncestorOf(astNode)) {
-                    scope.insert(0, "try:");
-                } else if (tryStmt.getFinallyBlock().isPresent() && tryStmt.getFinallyBlock().get().isAncestorOf(astNode)) {
-                    scope.insert(0, "finally:");
-                } else {
-                    // Sprawdź catch blocks
-                    for (int i = 0; i < tryStmt.getCatchClauses().size(); i++) {
-                        if (tryStmt.getCatchClauses().get(i).getBody().isAncestorOf(astNode)) {
-                            scope.insert(0, "catch" + i + ":");
-                            break;
-                        }
+            }
+        }
+
+        private void processIfStatement(com.github.javaparser.ast.stmt.IfStmt ifStmt) {
+            if (ifStmt.getThenStmt().isAncestorOf(astNode)) {
+                scope.insert(0, "if:");
+            } else {
+                ifStmt.getElseStmt().ifPresent(elseStmt -> {
+                    if (elseStmt.isAncestorOf(astNode)) {
+                        scope.insert(0, "else:");
+                    }
+                });
+            }
+        }
+
+        private void processTryStatement(com.github.javaparser.ast.stmt.TryStmt tryStmt) {
+            if (tryStmt.getTryBlock().isAncestorOf(astNode)) {
+                scope.insert(0, "try:");
+            } else {
+                tryStmt.getFinallyBlock().ifPresent(finallyBlock -> {
+                    if (finallyBlock.isAncestorOf(astNode)) {
+                        scope.insert(0, "finally:");
+                    }
+                });
+
+                // Sprawdź catch blocks
+                for (int i = 0; i < tryStmt.getCatchClauses().size(); i++) {
+                    if (tryStmt.getCatchClauses().get(i).getBody().isAncestorOf(astNode)) {
+                        scope.insert(0, "catch").insert(5, String.valueOf(i)).insert(scope.length(), ":");
+                        break;
                     }
                 }
-            } else if (current instanceof com.github.javaparser.ast.stmt.SynchronizedStmt) {
-                scope.insert(0, "sync:");
-            } else if (current instanceof com.github.javaparser.ast.stmt.ForStmt) {
-                // Dla pętli for, dodaj unikalny identyfikator oparty na pozycji w kodzie
-                scope.insert(0, "for" + current.hashCode() + ":");
-            } else if (current instanceof com.github.javaparser.ast.stmt.ForEachStmt) {
-                scope.insert(0, "foreach" + current.hashCode() + ":");
-            } else if (current instanceof com.github.javaparser.ast.stmt.WhileStmt) {
-                scope.insert(0, "while" + current.hashCode() + ":");
             }
-
-            current = current.getParentNode().orElse(null);
         }
-
-        return scope.toString();
     }
 
-    // NOWA METODA: Generuje sygnaturę dla klasy anonimowej
-    private String getAnonymousClassSignature(com.github.javaparser.ast.expr.ObjectCreationExpr anonymousClass) {
-        StringBuilder signature = new StringBuilder();
-
-        // Nazwa typu który implementujemy
-        signature.append(anonymousClass.getTypeAsString());
-
-        // Dodaj hash pozycji dla unikalności
-        signature.append("@").append(Math.abs(anonymousClass.hashCode() % 10000));
-
-        return signature.toString();
+    // Bezpieczna metoda generowania sygnatury klasy anonimowej
+    private static String getAnonymousClassSignature(com.github.javaparser.ast.expr.ObjectCreationExpr anonymousClass) {
+        String typeName = anonymousClass.getTypeAsString();
+        int hashCode = Math.abs(anonymousClass.hashCode() % 10000);
+        return typeName + "@" + hashCode;
     }
 
     // NOWA METODA: Deduplikacja oparta na strukturze AST zamiast numerów linii
     protected boolean isNewFeatureByStructure(String filePath, String code, String structuralContext, String specificContext) {
+        if (filePath == null || code == null || structuralContext == null || specificContext == null) {
+            LOGGER.warning("Null parameters passed to isNewFeatureByStructure");
+            return false;
+        }
+
         String normalizedCode = normalizeCode(code);
-
-        // Klucz BEZ numeru linii - oparty na strukturze AST
         String structuralKey = filePath + "::" + structuralContext + "::" + normalizedCode;
-
-        // Klucz dla sprawdzania duplikatów w ramach commita - z kontekstem specyficznym
         String commitKey = structuralKey + "::" + specificContext;
 
         if (!commitFeatures.add(commitKey)) {
             return false;  // Już widzieliśmy ten kod w tym kontekście w tym commicie
         }
 
-        // Klucz dla sprawdzania duplikatów między commitami - strukturalny, bez specyficznego kontekstu
-        boolean isNew = seenFeatures.add(structuralKey);
-
-        return isNew;
+        return seenFeatures.add(structuralKey);
     }
 
     // NOWA METODA: Dodawanie wystąpienia z deduplikacją strukturalną
     protected void addFeatureOccurrenceByStructure(String filePath, int line, String lineContent, String context,
                                                    com.github.javaparser.ast.Node astNode, String specificContext) {
-        String structuralContext = generateStructuralContext(astNode);
-
-        if (isNewFeatureByStructure(filePath, lineContent, structuralContext, specificContext)) {
-            filesWithFeature.add(filePath);
-            totalOccurrences++;
-
-            // Tworzymy sygnaturę z hashem commita - używamy strukturalnego kontekstu zamiast linii w kluczu
-            String fullSignature = String.format("%s::%s::%s::%s",
-                filePath,
-                structuralContext, // Używamy strukturalnego kontekstu zamiast linii
-                normalizeCode(lineContent),
-                currentCommitHash != null ? currentCommitHash : "unknown");
-
-            FeatureSignature signature = new FeatureSignature(fullSignature, context);
-            String signatureHash = signature.getSignature();
-
-            // Dodaj kontekst strukturalny i specyficzny do zawartości linii dla logów
-            String lineContentWithContext = lineContent + " [struct:" + structuralContext + "][ctx:" + specificContext + "]";
-
-            occurrences.add(new FeatureOccurrence(
-                filePath,
-                getName(),
-                1,
-                line, // Zachowujemy numer linii dla logowania, ale nie używamy go w deduplikacji
-                lineContentWithContext,
-                signatureHash
-            ));
+        if (filePath == null || lineContent == null || astNode == null) {
+            LOGGER.warning("Null parameters passed to addFeatureOccurrenceByStructure");
+            return;
         }
+
+        try {
+            String structuralContext = generateStructuralContext(astNode);
+
+            if (isNewFeatureByStructure(filePath, lineContent, structuralContext, specificContext)) {
+                filesWithFeature.add(filePath);
+                totalOccurrences++;
+
+                FeatureOccurrence occurrence = createFeatureOccurrence(filePath, line, lineContent, context,
+                    structuralContext, specificContext);
+                occurrences.add(occurrence);
+            }
+        } catch (Exception e) {
+            LOGGER.log(Level.WARNING, "Error in addFeatureOccurrenceByStructure for file: " + filePath, e);
+        }
+    }
+
+    private FeatureOccurrence createFeatureOccurrence(String filePath, int line, String lineContent,
+            String context, String structuralContext, String specificContext) {
+
+        String fullSignature = String.format("%s::%s::%s::%s",
+            filePath,
+            structuralContext,
+            normalizeCode(lineContent),
+            currentCommitHash != null ? currentCommitHash : "unknown");
+
+        FeatureSignature signature = new FeatureSignature(fullSignature, context);
+        String signatureHash = signature.getSignature();
+
+        StringBuilder lineContentWithContext = new StringBuilder(lineContent);
+        lineContentWithContext.append(" [struct:").append(structuralContext)
+            .append("][ctx:").append(specificContext).append("]");
+
+        return new FeatureOccurrence(
+            filePath,
+            getName(),
+            1,
+            line,
+            lineContentWithContext.toString(),
+            signatureHash
+        );
     }
 }
