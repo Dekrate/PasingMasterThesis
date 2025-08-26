@@ -435,9 +435,8 @@ class AggressiveDeduplicationTest {
         } else if (occurrences.size() == 2) {
             System.out.println("✅ JavaParser poprawnie rozróżnia overloaded metody");
         }
-        
-        assertTrue(!occurrences.isEmpty() && occurrences.size() <= 2,
-            "Overloaded metody: oczekiwane 1-2 wystąpienia, otrzymano: " + occurrences.size());
+
+	    assertEquals(2, occurrences.size(), "Overloaded metody: oczekiwane 1-2 wystąpienia, otrzymano: " + occurrences.size());
     }
     
     // ========== TESTY STRESOWE ==========
