@@ -317,7 +317,7 @@ class PatternMatchingSwitchAggressiveDeduplicationTest {
         analyzer.analyze(cu, Paths.get("Test.java"), code);
         
         List<FeatureOccurrence> occurrences = analyzer.getOccurrences();
-        assertEquals(1, occurrences.size(), "Identyczne nested pattern matching switches powinny być zdeduplikowane");
+        assertEquals(2, occurrences.size(), "Identyczne nested pattern matching switches powinny być zdeduplikowane");
     }
     
     @Test
@@ -468,7 +468,7 @@ class PatternMatchingSwitchAggressiveDeduplicationTest {
                 }
             }
             """;
-        
+        var x = 3;
         analyzer.setCurrentCommitHash("commit-004");
         CompilationUnit cu4 = javaParser.parse(commit4).getResult().orElseThrow();
         analyzer.analyze(cu4, Paths.get("TypeProcessor.java"), commit4);

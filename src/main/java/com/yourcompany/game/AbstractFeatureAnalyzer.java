@@ -431,6 +431,29 @@ public abstract class AbstractFeatureAnalyzer implements SyntaxAnalyzerStrategy 
             String recordName = ((com.github.javaparser.ast.body.RecordDeclaration) astNode).getNameAsString();
             structuralKey = filePath + "::record::" + recordName;
             commitKey = structuralKey + "::" + specificContext;
+        } else if (specificContext != null && specificContext.startsWith("pattern-switch-hash:")) {
+            // NOWA LOGIKA DLA PATTERN MATCHING SWITCHES:
+            // Używamy semantycznego identyfikatora bazującego na indeksie switcha w metodzie
+            // To pozwala na stabilną deduplikację niezależnie od zmian pozycji w pliku
+
+            String switchIdentifier = "";
+            if (astNode != null) {
+                // Znajdź indeks tego switcha wśród wszystkich switchów w metodzie
+                int switchIndex = findSwitchIndexInMethod(astNode);
+                switchIdentifier = "switch-index:" + switchIndex;
+            }
+
+            // Klucz strukturalny bazuje na kontekście strukturalnym + indeksie switcha w metodzie
+            // To pozwala na zastępowanie switchów w tej samej pozycji semantycznej między commitami
+            structuralKey = filePath + "::" + structuralContext + "::" + switchIdentifier;
+
+            // Dla commitów używamy dodatkowo hash zawartości, żeby rozróżnić identyczne switche w ramach tego samego commita
+            String switchContentHash = "";
+            if (astNode != null) {
+                String switchContent = astNode.toString();
+                switchContentHash = "content:" + generateContentHash(switchContent);
+            }
+            commitKey = structuralKey + "::" + switchContentHash + "::" + specificContext;
         } else {
             // Dla innych typów używamy pełnej struktury
             structuralKey = filePath + "::" + structuralContext + "::" + normalizedCode;
@@ -514,5 +537,49 @@ public abstract class AbstractFeatureAnalyzer implements SyntaxAnalyzerStrategy 
             lineContentWithContext.toString(),
             signatureHash
         );
+    }
+
+    // NOWA METODA: Znajduje indeks switcha w metodzie dla stabilnej identyfikacji
+    private int findSwitchIndexInMethod(com.github.javaparser.ast.Node switchNode) {
+        // Znajdź metodę zawierającą ten switch
+        com.github.javaparser.ast.Node current = switchNode;
+        com.github.javaparser.ast.body.MethodDeclaration containingMethod = null;
+
+        while (current != null) {
+            if (current instanceof com.github.javaparser.ast.body.MethodDeclaration method) {
+                containingMethod = method;
+                break;
+            }
+            current = current.getParentNode().orElse(null);
+        }
+
+        if (containingMethod == null) {
+            return 0; // Fallback jeśli nie znaleziono metody
+        }
+
+        // Znajdź wszystkie switche w tej metodzie i określ indeks bieżącego
+        List<com.github.javaparser.ast.Node> switches = new ArrayList<>();
+        containingMethod.accept(new com.github.javaparser.ast.visitor.VoidVisitorAdapter<Void>() {
+            @Override
+            public void visit(com.github.javaparser.ast.stmt.SwitchStmt n, Void arg) {
+                switches.add(n);
+                super.visit(n, arg);
+            }
+
+            @Override
+            public void visit(com.github.javaparser.ast.expr.SwitchExpr n, Void arg) {
+                switches.add(n);
+                super.visit(n, arg);
+            }
+        }, null);
+
+        // Znajdź indeks bieżącego switcha
+        for (int i = 0; i < switches.size(); i++) {
+            if (switches.get(i) == switchNode) {
+                return i;
+            }
+        }
+
+        return 0; // Fallback
     }
 }
