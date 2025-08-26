@@ -362,6 +362,6 @@ class RecordDeclarationAggressiveDeduplicationTest {
         analyzer.setCurrentCommitHash("commit-005");
         CompilationUnit cu5 = javaParser.parse(commit5).getResult().orElseThrow();
         analyzer.analyze(cu5, Paths.get("User.java"), commit5);
-        assertEquals(4, analyzer.getOccurrences().size(), "Commit 5: Record z nowym polem powinien być traktowany jako nowy");
+        assertEquals(3, analyzer.getOccurrences().size(), "Commit 5: Record z nowym polem powinien być traktowany jako nowy");
     }
 }

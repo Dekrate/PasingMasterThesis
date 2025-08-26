@@ -422,13 +422,20 @@ public abstract class AbstractFeatureAnalyzer implements SyntaxAnalyzerStrategy 
 
         String normalizedCode = normalizeCode(code);
 
-        // NAPRAWKA: Specjalne przetwarzanie dla rekordów - używamy sygnatury AST zamiast surowego tekstu
-        if (specificContext != null && specificContext.startsWith("record:") && astNode instanceof com.github.javaparser.ast.body.RecordDeclaration) {
-            normalizedCode = extractRecordSignatureFromAST((com.github.javaparser.ast.body.RecordDeclaration) astNode);
-        }
+        // UPROSZCZONA LOGIKA DLA REKORDÓW: tylko nazwa + plik
+        String structuralKey;
+        String commitKey;
 
-        String structuralKey = filePath + "::" + structuralContext + "::" + normalizedCode;
-        String commitKey = structuralKey + "::" + specificContext;
+        if (specificContext != null && specificContext.startsWith("record:") && astNode instanceof com.github.javaparser.ast.body.RecordDeclaration) {
+            // Dla rekordów używamy tylko nazwy i pliku - rekordy o tej samej nazwie w tym samym pliku to ten sam rekord
+            String recordName = ((com.github.javaparser.ast.body.RecordDeclaration) astNode).getNameAsString();
+            structuralKey = filePath + "::record::" + recordName;
+            commitKey = structuralKey + "::" + specificContext;
+        } else {
+            // Dla innych typów używamy pełnej struktury
+            structuralKey = filePath + "::" + structuralContext + "::" + normalizedCode;
+            commitKey = structuralKey + "::" + specificContext;
+        }
 
         // DEBUG dla synchronized bloków
         System.out.println("=== DEBUG isNewFeatureByStructure ===");
@@ -457,20 +464,6 @@ public abstract class AbstractFeatureAnalyzer implements SyntaxAnalyzerStrategy 
         return isNewOverall;
     }
 
-    // NOWA METODA: Wyodrębnia stabilną sygnaturę rekordu z węzła AST
-    private String extractRecordSignatureFromAST(com.github.javaparser.ast.body.RecordDeclaration record) {
-        StringBuilder signature = new StringBuilder();
-        signature.append("record ").append(record.getNameAsString()).append("(");
-
-        for (int i = 0; i < record.getParameters().size(); i++) {
-            if (i > 0) signature.append(", ");
-            var param = record.getParameters().get(i);
-            signature.append(param.getType().toString()).append(" ").append(param.getNameAsString());
-        }
-
-        signature.append(") {}"); // Zawsze kończymy z {} aby sygnatura była stabilna
-        return signature.toString();
-    }
 
     // NOWA METODA: Dodawanie wystąpienia z deduplikacją strukturalną
     protected void addFeatureOccurrenceByStructure(String filePath, int line, String lineContent, String context,
