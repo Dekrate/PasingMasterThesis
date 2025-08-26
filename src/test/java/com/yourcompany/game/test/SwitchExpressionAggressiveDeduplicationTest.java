@@ -330,7 +330,7 @@ class SwitchExpressionAggressiveDeduplicationTest {
         
         List<FeatureOccurrence> occurrences = analyzer.getOccurrences();
         // Powinno wykryć każdy switch expression (zewnętrzny i wewnętrzny), ale deduplikować identyczne
-        assertTrue(occurrences.size() >= 2, "Powinien wykryć zagnieżdżone switch expressions");
+        assertTrue(occurrences.size() == 4, "Powinien wykryć zagnieżdżone switch expressions");
     }
     
     @Test

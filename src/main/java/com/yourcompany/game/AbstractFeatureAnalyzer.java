@@ -454,6 +454,29 @@ public abstract class AbstractFeatureAnalyzer implements SyntaxAnalyzerStrategy 
                 switchContentHash = "content:" + generateContentHash(switchContent);
             }
             commitKey = structuralKey + "::" + switchContentHash + "::" + specificContext;
+        } else if (specificContext != null && specificContext.startsWith("switch-expr-hash:")) {
+            // NOWA LOGIKA DLA SWITCH EXPRESSIONS:
+            // Używamy semantycznego identyfikatora bazującego na indeksie switcha w metodzie
+            // To pozwala na stabilną deduplikację niezależnie od zmian pozycji w pliku
+
+            String switchIdentifier = "";
+            if (astNode != null) {
+                // Znajdź indeks tego switcha wśród wszystkich switchów w metodzie
+                int switchIndex = findSwitchIndexInMethod(astNode);
+                switchIdentifier = "switch-index:" + switchIndex;
+            }
+
+            // Klucz strukturalny bazuje na kontekście strukturalnym + indeksie switcha w metodzie
+            // To pozwala na zastępowanie switchów w tej samej pozycji semantycznej między commitami
+            structuralKey = filePath + "::" + structuralContext + "::" + switchIdentifier;
+
+            // Dla commitów używamy dodatkowo hash zawartości, żeby rozróżnić identyczne switche w ramach tego samego commita
+            String switchContentHash = "";
+            if (astNode != null) {
+                String switchContent = astNode.toString();
+                switchContentHash = "content:" + generateContentHash(switchContent);
+            }
+            commitKey = structuralKey + "::" + switchContentHash + "::" + specificContext;
         } else {
             // Dla innych typów używamy pełnej struktury
             structuralKey = filePath + "::" + structuralContext + "::" + normalizedCode;
