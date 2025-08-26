@@ -89,8 +89,8 @@ public class SealedClassAnalyzer extends AbstractFeatureAnalyzer {
             // Kontekst dla sealed: typ + nazwa (stabilny między commitami)
             String specificContext = "sealed:" + modifier.getKeyword().asString() + ":" + n.getNameAsString();
 
-            // UŻYWAMY NOWEJ METODY STRUKTURALNEJ
-            addFeatureOccurrenceByStructure(
+            // NAPRAWKA: Używamy specjalnej metody dla sealed classes
+            addSealedClassOccurrence(
                 filePath.toAbsolutePath().toString(),
                 line,
                 lineContent,
@@ -99,6 +99,72 @@ public class SealedClassAnalyzer extends AbstractFeatureAnalyzer {
                 specificContext  // Kontekst: sealed:sealed:ClassName
             );
         });
+    }
+
+    // NOWA METODA: Specjalna deduplikacja dla sealed classes
+    private void addSealedClassOccurrence(String filePath, int line, String lineContent, String context,
+                                         ClassOrInterfaceDeclaration sealedClass, String specificContext) {
+        if (filePath == null || lineContent == null || sealedClass == null) {
+            return;
+        }
+
+        try {
+            String structuralContext = generateStructuralContext(sealedClass);
+
+            // KLUCZ BAZUJĄCY NA NAZWIE KLASY, NIE NA PERMITS
+            String sealedClassName = sealedClass.getNameAsString();
+            String sealedType = sealedClass.isInterface() ? "interface" : "class";
+
+            // Używamy nazwy klasy zamiast pełnego kodu jako klucza deduplikacji
+            String abstractKey = filePath + "::" + structuralContext + "::" + "sealed " + sealedType + " " + sealedClassName;
+            String commitKey = abstractKey + "::" + specificContext;
+
+            // Sprawdź czy już mieliśmy tę sealed class w tym commicie
+            boolean isNewInCommit = commitFeatures.putIfAbsent(commitKey, Boolean.TRUE) == null;
+            if (!isNewInCommit) {
+                return; // Już widzieliśmy tę sealed class w tym commicie
+            }
+
+            // Sprawdź czy już mieliśmy tę sealed class w ogóle
+            boolean isNewOverall = seenFeatures.putIfAbsent(abstractKey, Boolean.TRUE) == null;
+
+            if (isNewOverall) {
+                filesWithFeature.put(filePath, Boolean.TRUE);
+                totalOccurrences.incrementAndGet();
+
+                FeatureOccurrence occurrence = createSealedClassOccurrence(filePath, line, lineContent, context,
+                    structuralContext, specificContext, sealedClassName);
+                occurrences.add(occurrence);
+            }
+        } catch (Exception e) {
+            // Silent fallback - log if needed
+        }
+    }
+
+    private FeatureOccurrence createSealedClassOccurrence(String filePath, int line, String lineContent,
+            String context, String structuralContext, String specificContext, String className) {
+
+        String fullSignature = String.format("%s::%s::sealed_class_%s::%s",
+            filePath,
+            structuralContext,
+            className,
+            currentCommitHash != null ? currentCommitHash : "unknown");
+
+        FeatureSignature signature = new FeatureSignature(fullSignature, context);
+        String signatureHash = signature.getSignature();
+
+        StringBuilder lineContentWithContext = new StringBuilder(lineContent);
+        lineContentWithContext.append(" [struct:").append(structuralContext)
+            .append("][ctx:").append(specificContext).append("]");
+
+        return new FeatureOccurrence(
+            filePath,
+            getName(),
+            1,
+            line,
+            lineContentWithContext.toString(),
+            signatureHash
+        );
     }
 
     // OPTYMALIZACJA: Thread-safe cache dla podziału linii

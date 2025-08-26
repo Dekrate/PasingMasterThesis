@@ -32,8 +32,8 @@ public abstract class AbstractFeatureAnalyzer implements SyntaxAnalyzerStrategy 
     protected volatile String currentCommitHash;
 
     // THREAD SAFE: Kolekcje do deduplikacji
-    private final java.util.concurrent.ConcurrentHashMap<String, Boolean> seenFeatures = new java.util.concurrent.ConcurrentHashMap<>();  // między commitami
-    private final java.util.concurrent.ConcurrentHashMap<String, Boolean> commitFeatures = new java.util.concurrent.ConcurrentHashMap<>();  // w ramach commita
+    protected final java.util.concurrent.ConcurrentHashMap<String, Boolean> seenFeatures = new java.util.concurrent.ConcurrentHashMap<>();  // między commitami
+    protected final java.util.concurrent.ConcurrentHashMap<String, Boolean> commitFeatures = new java.util.concurrent.ConcurrentHashMap<>();  // w ramach commita
 
     @Override
     public void setCurrentCommitHash(String commitHash) {
@@ -218,6 +218,18 @@ public abstract class AbstractFeatureAnalyzer implements SyntaxAnalyzerStrategy 
 
         private void appendMethod(com.github.javaparser.ast.body.MethodDeclaration method, String methodScope) {
             context.append("method:").append(method.getNameAsString());
+
+            // NAPRAWKA: Dodaj parametry metody dla rozróżnienia przeciążonych metod
+            StringBuilder paramSignature = new StringBuilder();
+            paramSignature.append("(");
+            for (int i = 0; i < method.getParameters().size(); i++) {
+                if (i > 0) paramSignature.append(",");
+                var param = method.getParameters().get(i);
+                paramSignature.append(param.getType().toString());
+            }
+            paramSignature.append(")");
+            context.append(paramSignature.toString());
+
             if (!methodScope.isEmpty()) {
                 context.append(":").append(methodScope);
             }
@@ -226,6 +238,18 @@ public abstract class AbstractFeatureAnalyzer implements SyntaxAnalyzerStrategy 
 
         private void appendConstructor(com.github.javaparser.ast.body.ConstructorDeclaration constructor, String methodScope) {
             context.append("constructor:").append(constructor.getNameAsString());
+
+            // NAPRAWKA: Dodaj parametry konstruktora dla rozróżnienia przeciążonych konstruktorów
+            StringBuilder paramSignature = new StringBuilder();
+            paramSignature.append("(");
+            for (int i = 0; i < constructor.getParameters().size(); i++) {
+                if (i > 0) paramSignature.append(",");
+                var param = constructor.getParameters().get(i);
+                paramSignature.append(param.getType().toString());
+            }
+            paramSignature.append(")");
+            context.append(paramSignature.toString());
+
             if (!methodScope.isEmpty()) {
                 context.append(":").append(methodScope);
             }
@@ -386,12 +410,23 @@ public abstract class AbstractFeatureAnalyzer implements SyntaxAnalyzerStrategy 
 
     // NOWA METODA: Deduplikacja oparta na strukturze AST zamiast numerów linii
     protected boolean isNewFeatureByStructure(String filePath, String code, String structuralContext, String specificContext) {
+        return isNewFeatureByStructure(filePath, code, structuralContext, specificContext, null);
+    }
+
+    // PRZECIĄŻONA METODA: Z węzłem AST dla lepszej analizy strukturalnej
+    protected boolean isNewFeatureByStructure(String filePath, String code, String structuralContext, String specificContext, com.github.javaparser.ast.Node astNode) {
         if (filePath == null || code == null || structuralContext == null || specificContext == null) {
             LOGGER.warning("Null parameters passed to isNewFeatureByStructure");
             return false;
         }
 
         String normalizedCode = normalizeCode(code);
+
+        // NAPRAWKA: Specjalne przetwarzanie dla rekordów - używamy sygnatury AST zamiast surowego tekstu
+        if (specificContext != null && specificContext.startsWith("record:") && astNode instanceof com.github.javaparser.ast.body.RecordDeclaration) {
+            normalizedCode = extractRecordSignatureFromAST((com.github.javaparser.ast.body.RecordDeclaration) astNode);
+        }
+
         String structuralKey = filePath + "::" + structuralContext + "::" + normalizedCode;
         String commitKey = structuralKey + "::" + specificContext;
 
@@ -422,6 +457,21 @@ public abstract class AbstractFeatureAnalyzer implements SyntaxAnalyzerStrategy 
         return isNewOverall;
     }
 
+    // NOWA METODA: Wyodrębnia stabilną sygnaturę rekordu z węzła AST
+    private String extractRecordSignatureFromAST(com.github.javaparser.ast.body.RecordDeclaration record) {
+        StringBuilder signature = new StringBuilder();
+        signature.append("record ").append(record.getNameAsString()).append("(");
+
+        for (int i = 0; i < record.getParameters().size(); i++) {
+            if (i > 0) signature.append(", ");
+            var param = record.getParameters().get(i);
+            signature.append(param.getType().toString()).append(" ").append(param.getNameAsString());
+        }
+
+        signature.append(") {}"); // Zawsze kończymy z {} aby sygnatura była stabilna
+        return signature.toString();
+    }
+
     // NOWA METODA: Dodawanie wystąpienia z deduplikacją strukturalną
     protected void addFeatureOccurrenceByStructure(String filePath, int line, String lineContent, String context,
                                                    com.github.javaparser.ast.Node astNode, String specificContext) {
@@ -433,7 +483,8 @@ public abstract class AbstractFeatureAnalyzer implements SyntaxAnalyzerStrategy 
         try {
             String structuralContext = generateStructuralContext(astNode);
 
-            if (isNewFeatureByStructure(filePath, lineContent, structuralContext, specificContext)) {
+            // NAPRAWKA: Przekazujemy węzeł AST do metody deduplikacji
+            if (isNewFeatureByStructure(filePath, lineContent, structuralContext, specificContext, astNode)) {
                 filesWithFeature.put(filePath, Boolean.TRUE);
                 totalOccurrences.incrementAndGet();
 

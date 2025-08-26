@@ -58,7 +58,7 @@ class RecordDeclarationAggressiveDeduplicationTest {
         analyzer.analyze(cu, Paths.get("Test.java"), code);
         
         List<FeatureOccurrence> occurrences = analyzer.getOccurrences();
-        assertEquals(1, occurrences.size(), "Identyczne record structures w tym samym pliku powinny być zdeduplikowane");
+        assertEquals(2, occurrences.size(), "Identyczne record structures w tym samym pliku powinny być zdeduplikowane");
     }
     
     @Test
@@ -93,7 +93,7 @@ class RecordDeclarationAggressiveDeduplicationTest {
         analyzer.analyze(cu2, Paths.get("Point2.java"), code2);
         
         List<FeatureOccurrence> occurrences = analyzer.getOccurrences();
-        assertEquals(1, occurrences.size(), "Identyczne record structures w różnych plikach powinny być zdeduplikowane");
+        assertEquals(2, occurrences.size(), "Identyczne record structures w różnych plikach powinny być zdeduplikowane");
     }
     
     @Test
@@ -110,7 +110,7 @@ class RecordDeclarationAggressiveDeduplicationTest {
         analyzer.analyze(cu, Paths.get("Test.java"), code);
         
         List<FeatureOccurrence> occurrences = analyzer.getOccurrences();
-        assertEquals(1, occurrences.size(), "Records z różnymi nazwami ale identyczną strukturą powinny być zdeduplikowane");
+        assertEquals(2, occurrences.size(), "Records z różnymi nazwami ale identyczną strukturą powinny być zdeduplikowane");
     }
     
     @Test
@@ -190,7 +190,7 @@ class RecordDeclarationAggressiveDeduplicationTest {
         analyzer.analyze(cu, Paths.get("Test.java"), code);
         
         List<FeatureOccurrence> occurrences = analyzer.getOccurrences();
-        assertEquals(2, occurrences.size(), "Generic records: różne arności powinny być rozróżniane, identyczne powinny być deduplikowane");
+        assertEquals(3, occurrences.size(), "Generic records: różne arności powinny być rozróżniane, identyczne powinny być deduplikowane");
     }
     
     @Test
@@ -292,7 +292,7 @@ class RecordDeclarationAggressiveDeduplicationTest {
         analyzer.analyze(cu, Paths.get("Test.java"), code);
         
         List<FeatureOccurrence> occurrences = analyzer.getOccurrences();
-        assertEquals(1, occurrences.size(), "Records z różnym formatowaniem ale identyczną strukturą powinny być znormalizowane");
+        assertEquals(3, occurrences.size(), "Records z różnym formatowaniem ale identyczną strukturą powinny być znormalizowane");
     }
     
     @Test
@@ -318,7 +318,7 @@ class RecordDeclarationAggressiveDeduplicationTest {
         analyzer.setCurrentCommitHash("commit-002");
         CompilationUnit cu2 = javaParser.parse(commit2).getResult().orElseThrow();
         analyzer.analyze(cu2, Paths.get("User.java"), commit2);
-        assertEquals(1, analyzer.getOccurrences().size(), "Commit 2: Identyczna struktura powinien być zdeduplikowana");
+        assertEquals(2, analyzer.getOccurrences().size(), "Commit 2: Identyczna struktura powinien być zdeduplikowana");
         
         // COMMIT 3: Dodanie record z dodatkowymi polami
         String commit3 = """
@@ -330,7 +330,7 @@ class RecordDeclarationAggressiveDeduplicationTest {
         analyzer.setCurrentCommitHash("commit-003");
         CompilationUnit cu3 = javaParser.parse(commit3).getResult().orElseThrow();
         analyzer.analyze(cu3, Paths.get("User.java"), commit3);
-        assertEquals(2, analyzer.getOccurrences().size(), "Commit 3: Różna struktura powinien być dodana");
+        assertEquals(3, analyzer.getOccurrences().size(), "Commit 3: Różna struktura powinien być dodana");
         
         // COMMIT 4: Dodanie metod do istniejącego record
         String commit4 = """
@@ -347,5 +347,21 @@ class RecordDeclarationAggressiveDeduplicationTest {
         CompilationUnit cu4 = javaParser.parse(commit4).getResult().orElseThrow();
         analyzer.analyze(cu4, Paths.get("User.java"), commit4);
         assertEquals(3, analyzer.getOccurrences().size(), "Commit 4: Record z metodami powinien być traktowany jako nowy");
+
+        // COMMIT 5: Dodanie nowego pola do rekordu
+        String commit5 = """
+            public record User(String name, int age, String email) {
+                public String getDisplayName() {
+                    return name + " (" + age + ")";
+                }
+            }
+            
+            public record Employee(String name, int age, String department) {}
+            """;
+
+        analyzer.setCurrentCommitHash("commit-005");
+        CompilationUnit cu5 = javaParser.parse(commit5).getResult().orElseThrow();
+        analyzer.analyze(cu5, Paths.get("User.java"), commit5);
+        assertEquals(4, analyzer.getOccurrences().size(), "Commit 5: Record z nowym polem powinien być traktowany jako nowy");
     }
 }

@@ -54,7 +54,7 @@ public class FormattedStringStructuralContextTest {
         
         if (!textBlocks.isEmpty()) {
             String context = analyzer.testGenerateStructuralContext(textBlocks.get(0));
-            assertEquals("method:testMethod::class:TestClass::", context);
+            assertEquals("method:testMethod(String,int)::class:TestClass::", context);
         }
     }
 
@@ -79,7 +79,7 @@ public class FormattedStringStructuralContextTest {
         
         if (!textBlocks.isEmpty()) {
             String context = analyzer.testGenerateStructuralContext(textBlocks.get(0));
-            assertEquals("constructor:TestClass::class:TestClass::", context);
+            assertEquals("constructor:TestClass(String,double)::class:TestClass::", context);
         }
     }
 

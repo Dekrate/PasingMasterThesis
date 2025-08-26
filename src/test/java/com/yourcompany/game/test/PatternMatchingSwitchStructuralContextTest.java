@@ -63,10 +63,10 @@ public class PatternMatchingSwitchStructuralContextTest {
         
         if (!switchStmts.isEmpty()) {
             String context = analyzer.testGenerateStructuralContext(switchStmts.get(0));
-            assertEquals("method:testMethod::class:TestClass::", context);
+            assertEquals("method:testMethod(Object)::class:TestClass::", context);
         } else if (!switchExprs.isEmpty()) {
             String context = analyzer.testGenerateStructuralContext(switchExprs.get(0));
-            assertEquals("method:testMethod::class:TestClass::", context);
+            assertEquals("method:testMethod(Object)::class:TestClass::", context);
         }
     }
 
@@ -95,7 +95,7 @@ public class PatternMatchingSwitchStructuralContextTest {
         SwitchStmt switchStmt = cu.findFirst(SwitchStmt.class).get();
 
         String context = analyzer.testGenerateStructuralContext(switchStmt);
-        assertEquals("constructor:TestClass::class:TestClass::", context);
+        assertEquals("constructor:TestClass(Object)::class:TestClass::", context);
     }
 
     @Test
@@ -288,8 +288,8 @@ public class PatternMatchingSwitchStructuralContextTest {
         String innerContext = analyzer.testGenerateStructuralContext(switches.get(1));
 
         // Oba powinny mieć ten sam kontekst metody (zagnieżdżenie nie zmienia kontekstu strukturalnego)
-        assertEquals("method:nestedSwitchMethod::class:TestClass::", outerContext);
-        assertEquals("method:nestedSwitchMethod::class:TestClass::", innerContext);
+        assertEquals("method:nestedSwitchMethod(Object,Object)::class:TestClass::", outerContext);
+        assertEquals("method:nestedSwitchMethod(Object,Object)::class:TestClass::", innerContext);
         assertEquals(outerContext, innerContext, "Zagnieżdżone switche powinny mieć ten sam kontekst strukturalny");
     }
 
@@ -317,7 +317,7 @@ public class PatternMatchingSwitchStructuralContextTest {
         SwitchStmt switchStmt = cu.findFirst(SwitchStmt.class).get();
 
         String context = analyzer.testGenerateStructuralContext(switchStmt);
-        assertEquals("method:guardMethod::class:TestClass::", context);
+        assertEquals("method:guardMethod(Object)::class:TestClass::", context);
     }
 
     @Test
@@ -349,7 +349,7 @@ public class PatternMatchingSwitchStructuralContextTest {
         SwitchStmt switchStmt = cu.findFirst(SwitchStmt.class).get();
 
         String context = analyzer.testGenerateStructuralContext(switchStmt);
-        assertEquals("method:lambdaMethod::class:TestClass::", context);
+        assertEquals("method:lambdaMethod()::class:TestClass::", context);
     }
 
     @Test
@@ -411,9 +411,9 @@ public class PatternMatchingSwitchStructuralContextTest {
         assertTrue(context3.contains("process"), "Trzeci switch powinien zawierać 'process'");
 
         // W kontekście strukturalnym wszystkie są w tej samej metodzie 'process'
-        assertEquals("method:process::class:TestClass::", context1);
-        assertEquals("method:process::class:TestClass::", context2);
-        assertEquals("method:process::class:TestClass::", context3);
+        assertEquals("method:process(String)::class:TestClass::", context1);
+        assertEquals("method:process(Object)::class:TestClass::", context2);
+        assertEquals("method:process(Integer)::class:TestClass::", context3);
     }
 
     @Test
@@ -447,7 +447,7 @@ public class PatternMatchingSwitchStructuralContextTest {
         assertFalse(switchExprs.isEmpty(), "Powinien być switch expression jako return");
         
         String context = analyzer.testGenerateStructuralContext(switchExprs.get(0));
-        assertEquals("method:processValue::class:TestClass::", context);
+        assertEquals("method:processValue(Object)::class:TestClass::", context);
     }
 
     @Test
@@ -483,7 +483,7 @@ public class PatternMatchingSwitchStructuralContextTest {
         assertFalse(switchExprs.isEmpty(), "Powinien być switch expression jako argument");
         
         String context = analyzer.testGenerateStructuralContext(switchExprs.get(0));
-        assertEquals("method:callerMethod::class:TestClass::", context);
+        assertEquals("method:callerMethod(Object)::class:TestClass::", context);
     }
 
     @Test
@@ -566,6 +566,6 @@ public class PatternMatchingSwitchStructuralContextTest {
         SwitchStmt switchStmt = cu.findFirst(SwitchStmt.class).get();
 
         String context = analyzer.testGenerateStructuralContext(switchStmt);
-        assertEquals("method:processShape::class:TestClass::", context);
+        assertEquals("method:processShape(Shape)::class:TestClass::", context);
     }
 }

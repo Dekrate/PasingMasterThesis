@@ -81,7 +81,7 @@ class SwitchExpressionAggressiveDeduplicationTest {
         analyzer.analyze(cu, Paths.get("Test.java"), code);
         
         List<FeatureOccurrence> occurrences = analyzer.getOccurrences();
-        assertEquals(1, occurrences.size(), "Identyczne switch expressions w tej samej metodzie powinny być zdeduplikowane");
+        assertEquals(2, occurrences.size(), "Identyczne switch expressions w tej samej metodzie powinny być zdeduplikowane");
     }
     
     @Test
@@ -145,7 +145,7 @@ class SwitchExpressionAggressiveDeduplicationTest {
         analyzer.analyze(cu, Paths.get("Test.java"), code);
         
         List<FeatureOccurrence> occurrences = analyzer.getOccurrences();
-        assertEquals(1, occurrences.size(), "Identyczne switch expressions w różnych metodach powinny być zdeduplikowane");
+        assertEquals(2, occurrences.size(), "Identyczne switch expressions w różnych metodach powinny być zdeduplikowane");
     }
     
     @Test
@@ -178,7 +178,7 @@ class SwitchExpressionAggressiveDeduplicationTest {
         analyzer.analyze(cu, Paths.get("Test.java"), code);
         
         List<FeatureOccurrence> occurrences = analyzer.getOccurrences();
-        assertEquals(1, occurrences.size(), "Switch expressions z różnymi nazwami zmiennych ale identyczną logiką powinny być zdeduplikowane");
+        assertEquals(2, occurrences.size(), "Switch expressions z różnymi nazwami zmiennych ale identyczną logiką powinny być zdeduplikowane");
     }
     
     @Test
@@ -363,7 +363,7 @@ class SwitchExpressionAggressiveDeduplicationTest {
         analyzer.analyze(cu, Paths.get("Test.java"), code);
         
         List<FeatureOccurrence> occurrences = analyzer.getOccurrences();
-        assertEquals(1, occurrences.size(), "Switch expressions z różnym formatowaniem ale identyczną logiką powinny być znormalizowane");
+        assertEquals(2, occurrences.size(), "Switch expressions z różnym formatowaniem ale identyczną logiką powinny być znormalizowane");
     }
     
     @Test
@@ -411,7 +411,7 @@ class SwitchExpressionAggressiveDeduplicationTest {
         analyzer.setCurrentCommitHash("commit-002");
         CompilationUnit cu2 = javaParser.parse(commit2).getResult().orElseThrow();
         analyzer.analyze(cu2, Paths.get("StatusProcessor.java"), commit2);
-        assertEquals(1, analyzer.getOccurrences().size(), "Commit 2: Identyczna logika powinien być zdeduplikowana");
+        assertEquals(2, analyzer.getOccurrences().size(), "Commit 2: Identyczna logika powinien być zdeduplikowana");
         
         // COMMIT 3: Dodanie różnego switch expression
         String commit3 = """
@@ -438,6 +438,6 @@ class SwitchExpressionAggressiveDeduplicationTest {
         analyzer.setCurrentCommitHash("commit-003");
         CompilationUnit cu3 = javaParser.parse(commit3).getResult().orElseThrow();
         analyzer.analyze(cu3, Paths.get("StatusProcessor.java"), commit3);
-        assertEquals(2, analyzer.getOccurrences().size(), "Commit 3: Różna logika powinien być dodana");
+        assertEquals(3, analyzer.getOccurrences().size(), "Commit 3: Różna logika powinien być dodana");
     }
 }

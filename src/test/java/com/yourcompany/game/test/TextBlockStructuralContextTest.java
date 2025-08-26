@@ -52,7 +52,7 @@ public class TextBlockStructuralContextTest {
         TextBlockLiteralExpr textBlock = cu.findFirst(TextBlockLiteralExpr.class).get();
 
         String context = analyzer.testGenerateStructuralContext(textBlock);
-        assertEquals("method:testMethod::class:TestClass::", context);
+        assertEquals("method:testMethod()::class:TestClass::", context);
     }
 
     @Test
@@ -73,7 +73,7 @@ public class TextBlockStructuralContextTest {
         TextBlockLiteralExpr textBlock = cu.findFirst(TextBlockLiteralExpr.class).get();
 
         String context = analyzer.testGenerateStructuralContext(textBlock);
-        assertEquals("constructor:TestClass::class:TestClass::", context);
+        assertEquals("constructor:TestClass()::class:TestClass::", context);
     }
 
     @Test
@@ -229,7 +229,7 @@ public class TextBlockStructuralContextTest {
         TextBlockLiteralExpr textBlock = cu.findFirst(TextBlockLiteralExpr.class).get();
 
         String context = analyzer.testGenerateStructuralContext(textBlock);
-        assertEquals("method:getTemplate::class:TestClass::", context);
+        assertEquals("method:getTemplate()::class:TestClass::", context);
     }
 
     @Test
@@ -250,7 +250,7 @@ public class TextBlockStructuralContextTest {
         TextBlockLiteralExpr textBlock = cu.findFirst(TextBlockLiteralExpr.class).get();
 
         String context = analyzer.testGenerateStructuralContext(textBlock);
-        assertEquals("method:testMethod::class:TestClass::", context);
+        assertEquals("method:testMethod()::class:TestClass::", context);
     }
 
     @Test

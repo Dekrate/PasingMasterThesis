@@ -57,7 +57,7 @@ public class StructuralContextTest {
         VarType varNode = cu.findFirst(VarType.class).get();
 
         String context = analyzer.testGenerateStructuralContext(varNode);
-        assertEquals("method:testMethod::class:TestClass::", context);
+        assertEquals("method:testMethod()::class:TestClass::", context);
     }
 
     @Test
@@ -75,7 +75,7 @@ public class StructuralContextTest {
         VarType varNode = cu.findFirst(VarType.class).get();
 
         String context = analyzer.testGenerateStructuralContext(varNode);
-        assertEquals("constructor:TestClass::class:TestClass::", context);
+        assertEquals("constructor:TestClass()::class:TestClass::", context);
     }
 
     @Test

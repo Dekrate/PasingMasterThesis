@@ -113,7 +113,7 @@ public class SealedClassStructuralContextTest {
             .findFirst().get();
 
         String context = analyzer.testGenerateStructuralContext(sealedClass);
-        assertEquals("method:testMethod::class:TestClass::", context);
+        assertEquals("method:testMethod()::class:TestClass::", context);
     }
 
     @Test
@@ -138,7 +138,7 @@ public class SealedClassStructuralContextTest {
             .findFirst().get();
 
         String context = analyzer.testGenerateStructuralContext(sealedClass);
-        assertEquals("constructor:TestClass::class:TestClass::", context);
+        assertEquals("constructor:TestClass()::class:TestClass::", context);
     }
 
     @Test

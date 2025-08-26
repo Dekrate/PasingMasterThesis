@@ -53,7 +53,7 @@ public class SwitchExpressionStructuralContextTest {
         SwitchExpr switchExpr = cu.findFirst(SwitchExpr.class).get();
 
         String context = analyzer.testGenerateStructuralContext(switchExpr);
-        assertEquals("method:testMethod::class:TestClass::", context);
+        assertEquals("method:testMethod()::class:TestClass::", context);
     }
 
     @Test
@@ -77,7 +77,7 @@ public class SwitchExpressionStructuralContextTest {
         SwitchExpr switchExpr = cu.findFirst(SwitchExpr.class).get();
 
         String context = analyzer.testGenerateStructuralContext(switchExpr);
-        assertEquals("constructor:TestClass::class:TestClass::", context);
+        assertEquals("constructor:TestClass(int)::class:TestClass::", context);
     }
 
     @Test
@@ -99,7 +99,7 @@ public class SwitchExpressionStructuralContextTest {
         SwitchExpr switchExpr = cu.findFirst(SwitchExpr.class).get();
 
         String context = analyzer.testGenerateStructuralContext(switchExpr);
-        assertEquals("method:getDayName::class:TestClass::", context);
+        assertEquals("method:getDayName(int)::class:TestClass::", context);
     }
 
     @Test
@@ -246,7 +246,7 @@ public class SwitchExpressionStructuralContextTest {
         SwitchExpr switchExpr = cu.findFirst(SwitchExpr.class).get();
 
         String context = analyzer.testGenerateStructuralContext(switchExpr);
-        assertEquals("method:testMethod::class:TestClass::", context);
+        assertEquals("method:testMethod()::class:TestClass::", context);
     }
 
     @Test
@@ -311,7 +311,7 @@ public class SwitchExpressionStructuralContextTest {
         SwitchExpr switchExpr = cu.findFirst(SwitchExpr.class).get();
 
         String context = analyzer.testGenerateStructuralContext(switchExpr);
-        assertEquals("method:testMethod::class:TestClass::", context);
+        assertEquals("method:testMethod()::class:TestClass::", context);
     }
 
     @Test
@@ -333,7 +333,7 @@ public class SwitchExpressionStructuralContextTest {
         SwitchExpr switchExpr = cu.findFirst(SwitchExpr.class).get();
 
         String context = analyzer.testGenerateStructuralContext(switchExpr);
-        assertEquals("method:getStatusName::class:TestClass::", context);
+        assertEquals("method:getStatusName(int)::class:TestClass::", context);
     }
 
     @Test

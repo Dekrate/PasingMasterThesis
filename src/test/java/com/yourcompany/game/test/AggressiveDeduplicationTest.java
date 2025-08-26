@@ -70,8 +70,8 @@ class AggressiveDeduplicationTest {
         assertEquals(2, occurrences.size(), "Var w różnych metodach powinien być zaakceptowany 2 razy");
         
         // Sprawdź konteksty strukturalne w logach
-        assertTrue(occurrences.get(0).getLineContent().contains("method:method1::"));
-        assertTrue(occurrences.get(1).getLineContent().contains("method:method2::"));
+        assertTrue(occurrences.get(0).getLineContent().contains("method:method1()::"));
+        assertTrue(occurrences.get(1).getLineContent().contains("method:method2()::"));
     }
 
     @Test
@@ -150,8 +150,8 @@ class AggressiveDeduplicationTest {
         
         // Sprawdź różne konteksty
         boolean hasStaticBlock = occurrences.stream().anyMatch(o -> o.getLineContent().contains("static-block::"));
-        boolean hasConstructor = occurrences.stream().anyMatch(o -> o.getLineContent().contains("constructor:Test::"));
-        boolean hasMethod = occurrences.stream().anyMatch(o -> o.getLineContent().contains("method:method::"));
+        boolean hasConstructor = occurrences.stream().anyMatch(o -> o.getLineContent().contains("constructor:Test()::"));
+        boolean hasMethod = occurrences.stream().anyMatch(o -> o.getLineContent().contains("method:method()::"));
         
         assertTrue(hasStaticBlock, "Powinien zawierać kontekst static-block");
         assertTrue(hasConstructor, "Powinien zawierać kontekst constructor");

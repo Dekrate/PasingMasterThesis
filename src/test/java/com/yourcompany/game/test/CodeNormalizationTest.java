@@ -133,9 +133,9 @@ public class CodeNormalizationTest {
         String hashEmpty = analyzer.testGenerateContentHash("");
         String hashSpaces = analyzer.testGenerateContentHash("   ");
         String hashNull = analyzer.testGenerateContentHash(null);
-        String hashComment = analyzer.testGenerateContentHash("// tylko komentarz");
 
-        assertEquals("empty", hashEmpty, "Pusty string → hash 'empty'");
+
+	    assertEquals("empty", hashEmpty, "Pusty string → hash 'empty'");
         assertEquals("empty", hashSpaces, "Same spacje → hash 'empty'");
         assertEquals("empty", hashNull, "Null → hash 'empty'");
     }

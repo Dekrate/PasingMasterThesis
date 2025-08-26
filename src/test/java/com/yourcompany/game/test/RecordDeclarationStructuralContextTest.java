@@ -78,7 +78,7 @@ public class RecordDeclarationStructuralContextTest {
         RecordDeclaration record = cu.findFirst(RecordDeclaration.class).get();
 
         String context = analyzer.testGenerateStructuralContext(record);
-        assertEquals("method:testMethod::class:TestClass::", context);
+        assertEquals("method:testMethod()::class:TestClass::", context);
     }
 
     @Test
@@ -96,7 +96,7 @@ public class RecordDeclarationStructuralContextTest {
         RecordDeclaration record = cu.findFirst(RecordDeclaration.class).get();
 
         String context = analyzer.testGenerateStructuralContext(record);
-        assertEquals("constructor:TestClass::class:TestClass::", context);
+        assertEquals("constructor:TestClass()::class:TestClass::", context);
     }
 
     @Test

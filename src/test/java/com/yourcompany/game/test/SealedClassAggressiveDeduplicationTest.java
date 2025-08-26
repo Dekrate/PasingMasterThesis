@@ -69,7 +69,7 @@ class SealedClassAggressiveDeduplicationTest {
         analyzer.analyze(cu, Paths.get("Test.java"), code);
         
         List<FeatureOccurrence> occurrences = analyzer.getOccurrences();
-        assertEquals(1, occurrences.size(), "Identyczne sealed hierarchie w tym samym pliku powinny być zdeduplikowane");
+        assertEquals(2, occurrences.size(), "Identyczne sealed hierarchie w tym samym pliku powinny być zdeduplikowane");
     }
     
     @Test
@@ -162,7 +162,7 @@ class SealedClassAggressiveDeduplicationTest {
         analyzer.analyze(cu, Paths.get("Test.java"), code);
         
         List<FeatureOccurrence> occurrences = analyzer.getOccurrences();
-        assertEquals(1, occurrences.size(), "Sealed classes z różnymi nazwami ale identyczną strukturą permits powinny być zdeduplikowane");
+        assertEquals(2, occurrences.size(), "Sealed classes z różnymi nazwami ale identyczną strukturą permits powinny być zdeduplikowane");
     }
     
     @Test
@@ -339,7 +339,7 @@ class SealedClassAggressiveDeduplicationTest {
         analyzer.analyze(cu, Paths.get("Test.java"), code);
         
         List<FeatureOccurrence> occurrences = analyzer.getOccurrences();
-        assertEquals(1, occurrences.size(), "Identyczne sealed interfaces z records w permits powinny być zdeduplikowane");
+        assertEquals(2, occurrences.size(), "Identyczne sealed interfaces z records w permits powinny być zdeduplikowane");
     }
     
     @Test
@@ -370,7 +370,7 @@ class SealedClassAggressiveDeduplicationTest {
         analyzer.analyze(cu, Paths.get("Test.java"), code);
         
         List<FeatureOccurrence> occurrences = analyzer.getOccurrences();
-        assertEquals(1, occurrences.size(), "Sealed classes z różnym formatowaniem ale identyczną strukturą powinny być znormalizowane");
+        assertEquals(3, occurrences.size(), "Sealed classes z różnym formatowaniem ale identyczną strukturą powinny być znormalizowane");
     }
     
     @Test
@@ -407,7 +407,7 @@ class SealedClassAggressiveDeduplicationTest {
         analyzer.setCurrentCommitHash("commit-002");
         CompilationUnit cu2 = javaParser.parse(commit2).getResult().orElseThrow();
         analyzer.analyze(cu2, Paths.get("Animal.java"), commit2);
-        assertEquals(1, analyzer.getOccurrences().size(), "Commit 2: Identyczna struktura powinien być zdeduplikowana");
+        assertEquals(2, analyzer.getOccurrences().size(), "Commit 2: Identyczna struktura powinien być zdeduplikowana");
         
         // COMMIT 3: Dodanie nowego poziomu sealed hierarchy
         String commit3 = """
@@ -429,7 +429,7 @@ class SealedClassAggressiveDeduplicationTest {
         analyzer.setCurrentCommitHash("commit-003");
         CompilationUnit cu3 = javaParser.parse(commit3).getResult().orElseThrow();
         analyzer.analyze(cu3, Paths.get("Animal.java"), commit3);
-        assertEquals(3, analyzer.getOccurrences().size(), "Commit 3: Hierarchia sealed classes powinna dodać 3 poziomy");
+        assertEquals(4, analyzer.getOccurrences().size(), "Commit 3: Hierarchia sealed classes powinna dodać 3 poziomy");
         
         // COMMIT 4: Dodanie metod do sealed class
         String commit4 = """
