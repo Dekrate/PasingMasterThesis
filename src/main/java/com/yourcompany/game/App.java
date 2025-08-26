@@ -51,8 +51,7 @@ public class App {
                 new SealedClassAnalyzer(),
                 new PatternMatchingSwitchAnalyzer(),
                 new RecordDeclarationAnalyzer(),
-                new VarUsageAnalyzer(),
-                new FormattedStringAnalyzer()
+                new VarUsageAnalyzer()
         );
 
         String csvFilePath = "analysis_results.csv";
@@ -202,8 +201,7 @@ public class App {
                 new SealedClassAnalyzer(),
                 new PatternMatchingSwitchAnalyzer(),
                 new RecordDeclarationAnalyzer(),
-                new VarUsageAnalyzer(),
-                new FormattedStringAnalyzer()
+                new VarUsageAnalyzer()
         );
 
         HistoricalAnalyzer historicalAnalyzer = new HistoricalAnalyzer(analysisStrategies);

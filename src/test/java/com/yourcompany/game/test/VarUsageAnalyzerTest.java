@@ -31,9 +31,9 @@ public class VarUsageAnalyzerTest {
     private void clearAnalyzerState() {
         try {
             // Wyczyść stan analizatora przed każdym testem
-            Field occurrencesField = analyzer.getClass().getSuperclass().getDeclaredField("featureOccurrences");
+            Field occurrencesField = analyzer.getClass().getSuperclass().getDeclaredField("occurrences");
             occurrencesField.setAccessible(true);
-            Map<?, ?> occurrences = (Map<?, ?>) occurrencesField.get(analyzer);
+            java.util.List<?> occurrences = (java.util.List<?>) occurrencesField.get(analyzer);
             occurrences.clear();
         } catch (Exception e) {
             // Jeśli nie możemy wyczyścić, kontynuujemy - może nie być to konieczne
@@ -243,9 +243,9 @@ public class VarUsageAnalyzerTest {
 
     private boolean hasFeatureOccurrences() {
         try {
-            Field occurrencesField = analyzer.getClass().getSuperclass().getDeclaredField("featureOccurrences");
+            Field occurrencesField = analyzer.getClass().getSuperclass().getDeclaredField("occurrences");
             occurrencesField.setAccessible(true);
-            Map<?, ?> occurrences = (Map<?, ?>) occurrencesField.get(analyzer);
+            java.util.List<?> occurrences = (java.util.List<?>) occurrencesField.get(analyzer);
             return !occurrences.isEmpty();
         } catch (Exception e) {
             System.out.println("Nie można sprawdzić occurrences: " + e.getMessage());

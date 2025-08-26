@@ -30,9 +30,9 @@ public class RecordDeclarationAnalyzerTest {
 
     private void clearAnalyzerState() {
         try {
-            Field occurrencesField = analyzer.getClass().getSuperclass().getDeclaredField("featureOccurrences");
+            Field occurrencesField = analyzer.getClass().getSuperclass().getDeclaredField("occurrences");
             occurrencesField.setAccessible(true);
-            Map<?, ?> occurrences = (Map<?, ?>) occurrencesField.get(analyzer);
+            java.util.List<?> occurrences = (java.util.List<?>) occurrencesField.get(analyzer);
             occurrences.clear();
         } catch (Exception e) {
             // Kontynuuj jeśli nie można wyczyścić stanu
@@ -254,9 +254,9 @@ public class RecordDeclarationAnalyzerTest {
 
     private boolean hasFeatureOccurrences() {
         try {
-            Field occurrencesField = analyzer.getClass().getSuperclass().getDeclaredField("featureOccurrences");
+            Field occurrencesField = analyzer.getClass().getSuperclass().getDeclaredField("occurrences");
             occurrencesField.setAccessible(true);
-            Map<?, ?> occurrences = (Map<?, ?>) occurrencesField.get(analyzer);
+            java.util.List<?> occurrences = (java.util.List<?>) occurrencesField.get(analyzer);
             return !occurrences.isEmpty();
         } catch (Exception e) {
             System.out.println("Nie można sprawdzić occurrences: " + e.getMessage());
