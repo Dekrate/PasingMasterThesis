@@ -8754,3 +8754,35 @@
 {"ts":1756144900570,"action":"IDE_ACTIVATED"}
 {"ts":1756144902104,"action":"IDE_DEACTIVATED"}
 {"ts":1756144902536,"action":"IDE_ACTIVATED"}
+{"ts":1756144933029,"action":"IDE_DEACTIVATED"}
+{"ts":1756144941861,"action":"IDE_ACTIVATED"}
+{"ts":1756144944212,"action":"IDE_DEACTIVATED"}
+{"ts":1756145015191,"action":"IDE_ACTIVATED"}
+{"ts":1756145025276,"action":"FILE_CLOSED","file":"/src/test/java/com/yourcompany/game/test/PatternMatchingSwitchStructuralContextTest.java","tags":{"FILE_LINE_OF_CODE":"572"}}
+{"ts":1756145025276,"action":"FILE_OPENED","file":"/src/test/java/com/yourcompany/game/test/VarUsageAnalyzerTest.java","tags":{"FILE_LINE_OF_CODE":"256"}}
+{"ts":1756145041003,"action":"FILE_CLOSED","file":"/src/test/java/com/yourcompany/game/test/VarUsageAnalyzerTest.java","tags":{"FILE_LINE_OF_CODE":"256"}}
+{"ts":1756145041003,"action":"FILE_OPENED","file":"/src/test/java/com/yourcompany/game/test/PatternMatchingSwitchStructuralContextTest.java","tags":{"FILE_LINE_OF_CODE":"572"}}
+{"ts":1756145050783,"action":"FILE_CLOSED","file":"/src/test/java/com/yourcompany/game/test/PatternMatchingSwitchStructuralContextTest.java","tags":{"FILE_LINE_OF_CODE":"572"}}
+{"ts":1756145050806,"action":"FILE_OPENED","file":"/src/test/java/com/yourcompany/game/test/TextBlockAnalyzerTest.java","tags":{"FILE_LINE_OF_CODE":"285"}}
+{"ts":1756145086545,"action":"FILE_CLOSED","file":"/src/test/java/com/yourcompany/game/test/TextBlockAnalyzerTest.java","tags":{"FILE_LINE_OF_CODE":"285"}}
+{"ts":1756145086568,"action":"FILE_OPENED","file":"/src/test/java/com/yourcompany/game/test/FormattedStringAnalyzerTest.java","tags":{"FILE_LINE_OF_CODE":"274"}}
+{"ts":1756145102897,"action":"FILE_CLOSED","file":"/src/test/java/com/yourcompany/game/test/FormattedStringAnalyzerTest.java","tags":{"FILE_LINE_OF_CODE":"274"}}
+{"ts":1756145102923,"action":"FILE_OPENED","file":"/src/test/java/com/yourcompany/game/test/SwitchExpressionAggressiveDeduplicationTest.java","tags":{"FILE_LINE_OF_CODE":"444"}}
+{"ts":1756145113045,"action":"PROJECT_CLOSED","tags":{"PROJECT_NAME":"Parsing — kopia — kopia"}}
+{"ts":1756145183337,"action":"FILE_OPENED","file":"/src/test/java/com/yourcompany/game/test/SwitchExpressionAggressiveDeduplicationTest.java","tags":{"FILE_LINE_OF_CODE":"444"}}
+{"ts":1756145189278,"action":"PROJECT_OPENED","tags":{"PROJECT_NAME":"Parsing — kopia — kopia"}}
+{"ts":1756145203427,"action":"PROJECT_CLOSED","tags":{"PROJECT_NAME":"Parsing — kopia — kopia"}}
+{"ts":1756185102873,"action":"FILE_OPENED","file":"/src/test/java/com/yourcompany/game/test/SwitchExpressionAggressiveDeduplicationTest.java","tags":{"FILE_LINE_OF_CODE":"444"}}
+{"ts":1756185104034,"action":"PROJECT_OPENED","tags":{"PROJECT_NAME":"Parsing — kopia — kopia"}}
+{"ts":1756185123629,"action":"FILE_CLOSED","file":"/src/test/java/com/yourcompany/game/test/SwitchExpressionAggressiveDeduplicationTest.java","tags":{"FILE_LINE_OF_CODE":"444"}}
+{"ts":1756185123677,"action":"FILE_OPENED","file":"/src/test/java/com/yourcompany/game/test/SealedClassStructuralContextTest.java","tags":{"FILE_LINE_OF_CODE":"440"}}
+{"ts":1756185124231,"action":"FILE_CLOSED","file":"/src/test/java/com/yourcompany/game/test/SealedClassStructuralContextTest.java","tags":{"FILE_LINE_OF_CODE":"440"}}
+{"ts":1756185124231,"action":"FILE_OPENED","file":"/src/test/java/com/yourcompany/game/test/StructuralContextTest.java","tags":{"FILE_LINE_OF_CODE":"285"}}
+{"ts":1756185127923,"action":"FILE_CLOSED","file":"/src/test/java/com/yourcompany/game/test/StructuralContextTest.java","tags":{"FILE_LINE_OF_CODE":"285"}}
+{"ts":1756185127923,"action":"FILE_OPENED","file":"/src/test/java/com/yourcompany/game/test/VarUsageAnalyzerTest.java","tags":{"FILE_LINE_OF_CODE":"256"}}
+{"ts":1756185129596,"action":"FILE_CLOSED","file":"/src/test/java/com/yourcompany/game/test/VarUsageAnalyzerTest.java","tags":{"FILE_LINE_OF_CODE":"256"}}
+{"ts":1756185129596,"action":"FILE_OPENED","file":"/src/test/java/com/yourcompany/game/test/FormattedStringAnalyzerTest.java","tags":{"FILE_LINE_OF_CODE":"274"}}
+{"ts":1756185133346,"action":"FILE_CLOSED","file":"/src/test/java/com/yourcompany/game/test/FormattedStringAnalyzerTest.java","tags":{"FILE_LINE_OF_CODE":"274"}}
+{"ts":1756185133346,"action":"FILE_OPENED","file":"/src/test/java/com/yourcompany/game/test/SwitchExpressionAggressiveDeduplicationTest.java","tags":{"FILE_LINE_OF_CODE":"444"}}
+{"ts":1756185138680,"action":"FILE_CLOSED","file":"/src/test/java/com/yourcompany/game/test/SwitchExpressionAggressiveDeduplicationTest.java","tags":{"FILE_LINE_OF_CODE":"444"}}
+{"ts":1756185138680,"action":"FILE_OPENED","file":"/src/test/java/com/yourcompany/game/test/VarUsageAnalyzerTest.java","tags":{"FILE_LINE_OF_CODE":"256"}}
