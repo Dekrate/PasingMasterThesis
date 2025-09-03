@@ -1,3 +1,4 @@
+
 import pandas as pd
 import matplotlib.pyplot as plt
 import os
@@ -8,6 +9,8 @@ from datetime import datetime
 CHARTS_DIR = "charts"
 REPO_CHARTS_DIR = os.path.join(CHARTS_DIR, "repository_trends")
 GLOBAL_CHARTS_DIR = os.path.join(CHARTS_DIR, "global_trends")
+REPO_CHARTS_BY_OCCURRENCE_DIR = os.path.join(CHARTS_DIR, "repository_trends_by_occurrence")
+GLOBAL_CHARTS_BY_OCCURRENCE_DIR = os.path.join(CHARTS_DIR, "global_trends_by_occurrence")
 ANALYSIS_FILE = "fixed_logs/analysis_results.csv"
 LOG_FILE_PATTERN = "fixed_logs/*_manual_log_fixed.csv"
 
@@ -27,6 +30,8 @@ def setup_directories():
     """Tworzy foldery na wykresy, jesli nie istneja."""
     os.makedirs(REPO_CHARTS_DIR, exist_ok=True)
     os.makedirs(GLOBAL_CHARTS_DIR, exist_ok=True)
+    os.makedirs(REPO_CHARTS_BY_OCCURRENCE_DIR, exist_ok=True)
+    os.makedirs(GLOBAL_CHARTS_BY_OCCURRENCE_DIR, exist_ok=True)
 
 def generate_plot(data, title, output_path):
     """Generuje i zapisuje wykres na podstawie danych."""
@@ -52,7 +57,48 @@ def generate_plot(data, title, output_path):
     
     plt.title(title)
     plt.xlabel("Data commita")
-    plt.ylabel("Skumulowana liczba wystapien")
+    plt.ylabel("Skumulowana liczba commitów")
+    plt.grid(True)
+    plt.xticks(rotation=45)
+    plt.tight_layout()
+    
+    # Zapis do pliku
+    plt.savefig(output_path)
+    plt.close()
+    print(f"Zapisano wykres: {output_path}")
+
+def generate_plot_by_occurrence(data, title, output_path):
+    """Generuje i zapisuje wykres skumulowanych wystąpień na podstawie danych."""
+    if data.empty:
+        print(f"Brak danych do wygenerowania wykresu: {title}")
+        return
+
+    # Konwersja daty i sortowanie
+    data['commit_date'] = pd.to_datetime(data['commit_date'], errors='coerce')
+    data = data.dropna(subset=['commit_date'])
+    
+    # Zliczanie wystąpień dla każdego commita
+    occurrences_per_commit = data.groupby('commit_id').agg(
+        commit_date=('commit_date', 'first'),
+        occurrences=('commit_id', 'size')
+    ).reset_index()
+    
+    occurrences_per_commit = occurrences_per_commit.sort_values(by='commit_date')
+
+    if occurrences_per_commit.empty:
+        print(f"Brak poprawnych danych czasowych dla: {title}")
+        return
+
+    # Obliczenie sumy skumulowanej wystąpień
+    occurrences_per_commit['cumulative_occurrences'] = occurrences_per_commit['occurrences'].cumsum()
+
+    # Tworzenie wykresu
+    plt.figure(figsize=(12, 6))
+    plt.plot(occurrences_per_commit['commit_date'], occurrences_per_commit['cumulative_occurrences'], marker='o', linestyle='-')
+    
+    plt.title(title)
+    plt.xlabel("Data commita")
+    plt.ylabel("Skumulowana liczba wystąpień")
     plt.grid(True)
     plt.xticks(rotation=45)
     plt.tight_layout()
@@ -71,18 +117,29 @@ def sanitize_filename(name):
 def generate_repository_specific_charts():
     """Generuje wykresy trendu dla kazdego repozytorium i feature'a."""
     print("\n--- Generowanie wykresow per repozytorium ---")
+    repo_names = []
     try:
-        # Read the analysis file to get repository names
-        df_analysis = pd.read_csv(ANALYSIS_FILE, decimal=',')
-        # Remove duplicate header rows
-        df_analysis = df_analysis[df_analysis['Repozytorium'] != 'Repozytorium']
-        repo_names = df_analysis['Repozytorium'].unique()
+        # The analysis file is malformed, so we parse it manually line by line
+        # to robustly extract repository names.
+        with open(ANALYSIS_FILE, 'r', encoding='utf-8') as f:
+            repo_names_set = set()
+            for line in f:
+                if not line.strip():
+                    continue
+                repo_name = line.split(',')[0].strip()
+                if repo_name and repo_name != 'Repozytorium':
+                    repo_names_set.add(repo_name)
+            repo_names = sorted(list(repo_names_set))
         print(f"Znaleziono repozytoria: {repo_names}")
     except FileNotFoundError:
         print(f"Blad: Plik {ANALYSIS_FILE} nie zostal znaleziony.")
         return
     except Exception as e:
         print(f"Blad podczas wczytywania pliku {ANALYSIS_FILE}: {e}")
+        return
+
+    if not repo_names:
+        print("Nie znaleziono żadnych repozytoriów do przetworzenia.")
         return
 
     for repo_name in repo_names:
@@ -99,11 +156,18 @@ def generate_repository_specific_charts():
                 
                 if not feature_data.empty:
                     sanitized_feature_name = sanitize_filename(feature_name)
-                    chart_title = f"Trend dla '{feature_name}' w repozytorium '{repo_name_str}'"
-                    output_filename = f"{repo_name_str}_{sanitized_feature_name}.png"
-                    output_path = os.path.join(REPO_CHARTS_DIR, output_filename)
                     
-                    generate_plot(feature_data.copy(), chart_title, output_path)
+                    # Wykres skumulowanej liczby commitów
+                    chart_title_commits = f"Trend commitów dla '{feature_name}' w repozytorium '{repo_name_str}'"
+                    output_filename_commits = f"{repo_name_str}_{sanitized_feature_name}.png"
+                    output_path_commits = os.path.join(REPO_CHARTS_DIR, output_filename_commits)
+                    generate_plot(feature_data.copy(), chart_title_commits, output_path_commits)
+
+                    # Wykres skumulowanej liczby wystąpień
+                    chart_title_occurrences = f"Trend wystąpień dla '{feature_name}' w repozytorium '{repo_name_str}'"
+                    output_filename_occurrences = f"{repo_name_str}_{sanitized_feature_name}_by_occurrence.png"
+                    output_path_occurrences = os.path.join(REPO_CHARTS_BY_OCCURRENCE_DIR, output_filename_occurrences)
+                    generate_plot_by_occurrence(feature_data.copy(), chart_title_occurrences, output_path_occurrences)
 
         except Exception as e:
             print(f"Blad podczas przetwarzania pliku {log_file}: {e}")
@@ -137,11 +201,18 @@ def generate_global_charts():
         
         if not feature_data.empty:
             sanitized_feature_name = sanitize_filename(feature_name)
-            chart_title = f"Globalny trend dla '{feature_name}'"
-            output_filename = f"global_{sanitized_feature_name}.png"
-            output_path = os.path.join(GLOBAL_CHARTS_DIR, output_filename)
+            
+            # Globalny wykres skumulowanej liczby commitów
+            chart_title_commits = f"Globalny trend commitów dla '{feature_name}'"
+            output_filename_commits = f"global_{sanitized_feature_name}.png"
+            output_path_commits = os.path.join(GLOBAL_CHARTS_DIR, output_filename_commits)
+            generate_plot(feature_data.copy(), chart_title_commits, output_path_commits)
 
-            generate_plot(feature_data, chart_title, output_path)
+            # Globalny wykres skumulowanej liczby wystąpień
+            chart_title_occurrences = f"Globalny trend wystąpień dla '{feature_name}'"
+            output_filename_occurrences = f"global_{sanitized_feature_name}_by_occurrence.png"
+            output_path_occurrences = os.path.join(GLOBAL_CHARTS_BY_OCCURRENCE_DIR, output_filename_occurrences)
+            generate_plot_by_occurrence(feature_data.copy(), chart_title_occurrences, output_path_occurrences)
 
 
 if __name__ == "__main__":
