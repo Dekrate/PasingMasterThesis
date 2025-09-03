@@ -216,7 +216,7 @@ def analyze_feature_adoption():
     print("- Specific statistical tests (e.g., t-test, ANOVA for significance tests) and modeling approaches (e.g., linear regression, survival models like Kaplan-Meier or Cox proportional hazards, clustering algorithms like K-Means) would need to be implemented using Apache Commons Math or other libraries.");
     print("- Detailed requirements for these advanced analyses (e.g., what constitutes a 'trend', what variables to include in models, how to define clusters) are necessary for implementation.")
 
-    # --- Generate Adoption Time vs. Release Date Plot ---
+    # --- Generate Plots for Each Feature ---
     plot_data = []
     for index, row in df.iterrows():
         feature_name = str(row["Nazwa Cechy"]).strip()
@@ -228,36 +228,49 @@ def analyze_feature_adoption():
             if days_to_adoption >= 0:
                 plot_data.append({
                     'feature': feature_name,
-                    'release_date': release_date,
                     'days_to_adoption': days_to_adoption,
                     'repository': row["Repozytorium"]
                 })
 
     if plot_data:
-        plt.figure(figsize=(12, 7))
-        for feature_name in FEATURE_RELEASE_DATES.keys():
+        # Get unique features from the data
+        unique_features = sorted(list(set(d['feature'] for d in plot_data)))
+
+        for feature_name in unique_features:
+            # Filter data for the current feature
             feature_specific_data = [d for d in plot_data if d['feature'] == feature_name]
-            if feature_specific_data:
-                release_dates = [d['release_date'] for d in feature_specific_data]
-                days_to_adoption = [d['days_to_adoption'] for d in feature_specific_data]
-                repositories = [d['repository'] for d in feature_specific_data]
+            
+            if not feature_specific_data:
+                continue
 
-                plt.scatter(release_dates, days_to_adoption, label=feature_name)
+            # Sort by repository name for consistent plotting
+            feature_specific_data.sort(key=lambda x: x['repository'])
 
-                for i, repo in enumerate(repositories):
-                    plt.annotate(repo, (release_dates[i], days_to_adoption[i]), textcoords="offset points", xytext=(0,5), ha='center', fontsize=8)
+            repositories = [d['repository'] for d in feature_specific_data]
+            days_to_adoption = [d['days_to_adoption'] for d in feature_specific_data]
 
-        plt.xlabel("Data Wydania Funkcji Java")
-        plt.ylabel("Czas do Adopcji (Dni)")
-        plt.title("Czas Adopcji Funkcji Java vs. Data Wydania")
-        plt.legend()
-        plt.grid(True)
-        plt.tight_layout()
-        plt.savefig("czas_adopcji_vs_wydanie_funkcji.png")
-        plt.close()
-        print("Wygenerowano wykres: czas_adopcji_vs_wydanie_funkcji.png")
+            plt.figure(figsize=(12, 8))
+            
+            # Create bar chart
+            plt.bar(repositories, days_to_adoption, color='skyblue')
+
+            plt.xlabel("Repozytorium")
+            plt.ylabel("Dni od wydania do pierwszego użycia")
+            plt.title(f"Czas adopcji dla cechy: {feature_name}")
+            plt.xticks(rotation=45, ha="right") # Rotate labels for better fit
+            plt.grid(axis='y', linestyle='--', alpha=0.7)
+            plt.tight_layout()
+
+            # Sanitize feature name for a valid filename
+            safe_feature_name = "".join(c for c in feature_name if c.isalnum() or c in (' ', '_')).rstrip().replace(' ', '_').replace('/', '_')
+            
+            plot_filename = f"adopcja_{safe_feature_name}.png"
+            plt.savefig(plot_filename)
+            plt.close()
+            print(f"Wygenerowano wykres: {plot_filename}")
     else:
-        print("Brak danych do wygenerowania wykresu czasu adopcji vs. daty wydania.")
+        print("Brak danych do wygenerowania wykresów.")
+
 
 if __name__ == "__main__":
     analyze_feature_adoption()

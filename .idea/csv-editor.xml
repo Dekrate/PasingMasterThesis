@@ -108,10 +108,45 @@
             </Attribute>
           </value>
         </entry>
+        <entry key="\fixed_logs\commons-cli_manual_log_fixed.csv">
+          <value>
+            <Attribute>
+              <option name="separator" value=";" />
+            </Attribute>
+          </value>
+        </entry>
         <entry key="\fixed_logs\commons-logging_manual_log_fixed.csv">
           <value>
             <Attribute>
               <option name="separator" value=";" />
+            </Attribute>
+          </value>
+        </entry>
+        <entry key="\fixed_logs\h2database_manual_log_fixed.csv">
+          <value>
+            <Attribute>
+              <option name="separator" value=";" />
+            </Attribute>
+          </value>
+        </entry>
+        <entry key="\fixed_logs\jackson-annotations_manual_log_fixed.csv">
+          <value>
+            <Attribute>
+              <option name="separator" value=";" />
+            </Attribute>
+          </value>
+        </entry>
+        <entry key="\fixed_logs\jackson-core_manual_log_fixed.csv">
+          <value>
+            <Attribute>
+              <option name="separator" value=";" />
+            </Attribute>
+          </value>
+        </entry>
+        <entry key="\fixed_logs\logging-log4j2_manual_log_fixed.csv">
+          <value>
+            <Attribute>
+              <option name="separator" value=":" />
             </Attribute>
           </value>
         </entry>
