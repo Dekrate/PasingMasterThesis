@@ -11,7 +11,6 @@ REPO_CHARTS_DIR = os.path.join(CHARTS_DIR, "repository_trends")
 GLOBAL_CHARTS_DIR = os.path.join(CHARTS_DIR, "global_trends")
 REPO_CHARTS_BY_OCCURRENCE_DIR = os.path.join(CHARTS_DIR, "repository_trends_by_occurrence")
 GLOBAL_CHARTS_BY_OCCURRENCE_DIR = os.path.join(CHARTS_DIR, "global_trends_by_occurrence")
-ANALYSIS_FILE = "fixed_logs/analysis_results.csv"
 LOG_FILE_PATTERN = "fixed_logs/*_manual_log_fixed.csv"
 
 # Lista funkcji do analizy
@@ -117,26 +116,23 @@ def sanitize_filename(name):
 def generate_repository_specific_charts():
     """Generuje wykresy trendu dla kazdego repozytorium i feature'a."""
     print("\n--- Generowanie wykresow per repozytorium ---")
-    repo_names = []
-    try:
-        # The analysis file is malformed, so we parse it manually line by line
-        # to robustly extract repository names.
-        with open(ANALYSIS_FILE, 'r', encoding='utf-8') as f:
-            repo_names_set = set()
-            for line in f:
-                if not line.strip():
-                    continue
-                repo_name = line.split(',')[0].strip()
-                if repo_name and repo_name != 'Repozytorium':
-                    repo_names_set.add(repo_name)
-            repo_names = sorted(list(repo_names_set))
-        print(f"Znaleziono repozytoria: {repo_names}")
-    except FileNotFoundError:
-        print(f"Blad: Plik {ANALYSIS_FILE} nie zostal znaleziony.")
+    
+    # Robustly get repository names from the log file names themselves
+    all_logs = glob.glob(LOG_FILE_PATTERN)
+    if not all_logs:
+        print(f"Blad: Nie znaleziono zadnych plikow logow pasujacych do wzorca {LOG_FILE_PATTERN}.")
         return
-    except Exception as e:
-        print(f"Blad podczas wczytywania pliku {ANALYSIS_FILE}: {e}")
-        return
+
+    repo_names_set = set()
+    suffix = '_manual_log_fixed.csv'
+    for log_file in all_logs:
+        basename = os.path.basename(log_file)
+        if basename.endswith(suffix):
+            repo_name = basename[:-len(suffix)]
+            repo_names_set.add(repo_name)
+
+    repo_names = sorted(list(repo_names_set))
+    print(f"Znaleziono repozytoria: {repo_names}")
 
     if not repo_names:
         print("Nie znaleziono żadnych repozytoriów do przetworzenia.")
