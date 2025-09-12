@@ -1020,63 +1020,93 @@ PODSUMOWANIE ULEPSZEŃ:
 
     def create_global_cluster_distribution(self, global_df, repo_summary_df):
         """Tworzy wykres globalnego rozkładu klastrów"""
-        fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(18, 14))
+        fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(24, 18))  # Zwiększony rozmiar z (18, 14)
         fig.suptitle('Globalny Rozkład Klastrów Autorów - Wszystkie Repozytoria',
                      fontsize=16, fontweight='bold')
 
         # Wykres 1: Rozkład klastrów (pie chart)
-        cluster_counts = global_df['cluster_name'].value_counts()
-        colors = ['#2E8B57', '#4169E1', '#FF8C00', '#696969']  # green, blue, orange, gray
+        if not global_df.empty and 'cluster_name' in global_df.columns:
+            cluster_counts = global_df['cluster_name'].value_counts()
 
-        wedges, texts, autotexts = ax1.pie(cluster_counts.values(),
-                                          labels=[f"{name}\n({count} autorów)"
-                                                 for name, count in cluster_counts.items()],
-                                          autopct='%1.1f%%', startangle=90, colors=colors,
-                                          textprops={'fontsize': 10})
-        ax1.set_title('Rozkład Typów Autorów\n(Wszystkie Repozytoria)')
+            if not cluster_counts.empty and len(cluster_counts) > 0:
+                colors = ['#2E8B57', '#4169E1', '#FF8C00', '#696969']  # green, blue, orange, gray
+
+                wedges, texts, autotexts = ax1.pie(cluster_counts.values,
+                                                  labels=[f"{name}\n({count} autorów)"
+                                                         for name, count in cluster_counts.items()],
+                                                  autopct='%1.1f%%', startangle=90, colors=colors,
+                                                  textprops={'fontsize': 10})
+                ax1.set_title('Rozkład Typów Autorów\n(Wszystkie Repozytoria)')
+            else:
+                ax1.text(0.5, 0.5, 'Brak danych do wyświetlenia',
+                        ha='center', va='center', transform=ax1.transAxes)
+                ax1.set_title('Rozkład Typów Autorów\n(Brak danych)')
+        else:
+            ax1.text(0.5, 0.5, 'Brak danych do wyświetlenia',
+                    ha='center', va='center', transform=ax1.transAxes)
+            ax1.set_title('Rozkład Typów Autorów\n(Brak danych)')
 
         # Wykres 2: Średnia efektywność per klaster
-        cluster_efficiency = global_df.groupby('cluster_name')['features_per_commit'].agg(['mean', 'std'])
+        # EFEKTYWNOŚĆ = liczba funkcji podzielona przez liczbę commitów (features/commits)
+        # Mierzy jak dużo nowych funkcji autor wprowadza w każdym commicie
+        if not global_df.empty and 'cluster_name' in global_df.columns and 'features_per_commit' in global_df.columns:
+            cluster_efficiency = global_df.groupby('cluster_name')['features_per_commit'].agg(['mean', 'std'])
+            colors = ['#2E8B57', '#4169E1', '#FF8C00', '#696969']
 
-        bars = ax2.bar(cluster_efficiency.index, cluster_efficiency['mean'],
-                      yerr=cluster_efficiency['std'], capsize=5,
-                      color=colors[:len(cluster_efficiency)], alpha=0.7)
+            bars = ax2.bar(cluster_efficiency.index, cluster_efficiency['mean'],
+                          yerr=cluster_efficiency['std'], capsize=5,
+                          color=colors[:len(cluster_efficiency)], alpha=0.7)
 
-        ax2.set_title('Średnia Efektywność per Typ Autora')
-        ax2.set_ylabel('Funkcji na Commit')
-        ax2.tick_params(axis='x', rotation=45)
-        ax2.grid(True, alpha=0.3)
+            ax2.set_title('Średnia Efektywność per Typ Autora\n(Efektywność = Funkcje/Commit)')
+            ax2.set_ylabel('Funkcji na Commit')
+            ax2.tick_params(axis='x', rotation=45)
+            ax2.grid(True, alpha=0.3)
 
-        # Dodaj wartości na słupkach
-        for bar, mean_val in zip(bars, cluster_efficiency['mean']):
-            ax2.text(bar.get_x() + bar.get_width()/2., bar.get_height() + 0.001,
-                    f'{mean_val:.3f}', ha='center', va='bottom', fontsize=9)
+            # Dodaj wartości na słupkach
+            for bar, mean_val in zip(bars, cluster_efficiency['mean']):
+                ax2.text(bar.get_x() + bar.get_width()/2., bar.get_height() + 0.001,
+                        f'{mean_val:.3f}', ha='center', va='bottom', fontsize=9)
+        else:
+            ax2.text(0.5, 0.5, 'Brak danych do wyświetlenia',
+                    ha='center', va='center', transform=ax2.transAxes)
+            ax2.set_title('Średnia Efektywność per Typ Autora\n(Brak danych)')
 
         # Wykres 3: Scatter plot commits vs features (wszystkie autorzy)
-        for i, (cluster_name, group) in enumerate(global_df.groupby('cluster_name')):
-            ax3.scatter(group['commits'], group['features'],
-                       label=f"{group.iloc[0]['cluster_icon']} {cluster_name}",
-                       alpha=0.6, s=50, color=colors[i % len(colors)])
+        if not global_df.empty and 'cluster_name' in global_df.columns:
+            colors = ['#2E8B57', '#4169E1', '#FF8C00', '#696969']
+            for i, (cluster_name, group) in enumerate(global_df.groupby('cluster_name')):
+                ax3.scatter(group['commits'], group['features'],
+                           label=f"{group.iloc[0]['cluster_icon']} {cluster_name}",
+                           alpha=0.6, s=50, color=colors[i % len(colors)])
 
-        ax3.set_xlabel('Liczba Commitów (log)')
-        ax3.set_ylabel('Liczba Funkcji (log)')
-        ax3.set_title('Aktywność vs Adopcja Funkcji\n(Wszyscy Autorzy)')
-        ax3.set_xscale('log')
-        ax3.set_yscale('symlog')
-        ax3.legend(fontsize=9)
-        ax3.grid(True, alpha=0.3)
+            ax3.set_xlabel('Liczba Commitów (log)')
+            ax3.set_ylabel('Liczba Funkcji (log)')
+            ax3.set_title('Aktywność vs Adopcja Funkcji\n(Wszyscy Autorzy)')
+            ax3.set_xscale('log')
+            ax3.set_yscale('symlog')
+            ax3.legend(fontsize=9)
+            ax3.grid(True, alpha=0.3)
+        else:
+            ax3.text(0.5, 0.5, 'Brak danych do wyświetlenia',
+                    ha='center', va='center', transform=ax3.transAxes)
+            ax3.set_title('Aktywność vs Adopcja Funkcji\n(Brak danych)')
 
         # Wykres 4: Top repozytoria po średniej efektywności
-        top_repos = repo_summary_df.nlargest(10, 'avg_efficiency')
+        if not repo_summary_df.empty and 'avg_efficiency' in repo_summary_df.columns:
+            top_repos = repo_summary_df.nlargest(10, 'avg_efficiency')
 
-        bars = ax4.barh(range(len(top_repos)), top_repos['avg_efficiency'],
-                       color='skyblue', alpha=0.7)
-        ax4.set_yticks(range(len(top_repos)))
-        ax4.set_yticklabels([repo[:15] + "..." if len(repo) > 15 else repo
-                            for repo in top_repos['repo']], fontsize=9)
-        ax4.set_xlabel('Średnia Efektywność')
-        ax4.set_title('Top 10 Repozytoriów\n(Według Efektywności)')
-        ax4.grid(True, alpha=0.3)
+            bars = ax4.barh(range(len(top_repos)), top_repos['avg_efficiency'],
+                           color='skyblue', alpha=0.7)
+            ax4.set_yticks(range(len(top_repos)))
+            ax4.set_yticklabels([repo[:15] + "..." if len(repo) > 15 else repo
+                                for repo in top_repos['repo']], fontsize=9)
+            ax4.set_xlabel('Średnia Efektywność (Funkcje/Commit)')
+            ax4.set_title('Top 10 Repozytoriów\n(Według Efektywności)')
+            ax4.grid(True, alpha=0.3)
+        else:
+            ax4.text(0.5, 0.5, 'Brak danych do wyświetlenia',
+                    ha='center', va='center', transform=ax4.transAxes)
+            ax4.set_title('Top 10 Repozytoriów\n(Brak danych)')
 
         # Dodaj wartości na słupkach
         for i, (bar, val) in enumerate(zip(bars, top_repos['avg_efficiency'])):
