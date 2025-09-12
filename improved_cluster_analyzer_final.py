@@ -393,10 +393,17 @@ class ImprovedClusterAnalyzer:
         cluster_meanings = self.assign_cluster_meanings(data, cluster_labels)
 
         # Dostosuj rozmiar figury - zmiana na 2x2 po usunięciu wykresu efektywności
-        fig_size = (20, 12)
+        fig_size = (16, 10)  # DRASTYCZNIE ZMNIEJSZONE z (16, 10)
         font_size = 8
 
+        print(f"🔍 DEBUGGING - Tworzenie figury dla {repo_name}")
+        print(f"   Rozmiar figury: {fig_size}")
+        print(f"   DPI matplotlib: {plt.rcParams['figure.dpi']}")
+
         fig, axes = plt.subplots(2, 2, figsize=fig_size)
+        print(f"   Rzeczywisty rozmiar figury: {fig.get_size_inches()}")
+        print(f"   Rozmiar w pikselach: {fig.get_size_inches() * fig.dpi}")
+
         fig.suptitle(f'Analiza 4 Logicznych Klastrów Autorów: {repo_name}',
                      fontsize=16, fontweight='bold')
 
@@ -648,7 +655,31 @@ class ImprovedClusterAnalyzer:
         ax4.set_title('Przykładowi Autorzy\n(z liczbą commitów globalnych i z feature\'ami)')
 
         plt.tight_layout()
-        plt.savefig(filename, dpi=300, bbox_inches='tight')
+
+        print(f"🔍 DEBUGGING - Zapisywanie figury dla {repo_name}")
+        print(f"   Przed zapisem - rozmiar figury: {fig.get_size_inches()}")
+        print(f"   Przed zapisem - DPI: {fig.dpi}")
+        print(f"   Przed zapisem - rozmiar w pikselach: {fig.get_size_inches() * fig.dpi}")
+        print(f"   Nazwa pliku: {filename}")
+
+        plt.savefig(filename, dpi=100, bbox_inches=None)  # USUNIĘTE bbox_inches='tight' i zmniejszone DPI
+
+        # Sprawdź rozmiar pliku po zapisie
+        import os
+        if filename.exists():
+            file_size = os.path.getsize(filename)
+            print(f"   Po zapisie - rozmiar pliku: {file_size} bajtów")
+
+            # Sprawdź rzeczywiste wymiary obrazu
+            try:
+                from PIL import Image
+                with Image.open(filename) as img:
+                    width, height = img.size
+                    print(f"   Po zapisie - wymiary obrazu: {width}x{height} pikseli")
+                    print(f"   Po zapisie - łączna liczba pikseli: {width * height}")
+            except Exception as e:
+                print(f"   Błąd przy sprawdzaniu wymiarów: {e}")
+
         plt.close()
 
         return cluster_stats
@@ -686,7 +717,8 @@ class ImprovedClusterAnalyzer:
 
                 if cluster_labels is not None:
                     n_clusters = len(np.unique(cluster_labels))
-                    safe_repo_name = repo_name.replace('/', '_').replace('\\', '_')
+                    # NAPRAWIONE: Bezpieczne nazwy plików - usuwanie WSZYSTKICH problematycznych znaków Windows
+                    safe_repo_name = repo_name.replace('/', '_').replace('\\', '_').replace(':', '_').replace('?', '_').replace('*', '_').replace('"', '_').replace('<', '_').replace('>', '_').replace('|', '_').replace('-', '_')
                     filename = self.repo_dir / f"improved_{safe_repo_name}.png"
 
                     cluster_stats = self.create_improved_visualization(
@@ -733,7 +765,7 @@ class ImprovedClusterAnalyzer:
             comparison_data['Poprawa'].append('✅' if repo['clusters'] > 2 else '—')
 
         # Wykres porównawczy
-        fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(18, 12))
+        fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(15, 10))  # ZMNIEJSZONE z (18, 12)
         fig.suptitle('Porównanie: Stary vs Nowy Algorytm Klastrowania', fontsize=16, fontweight='bold')
 
         repo_names = [r['repo'] for r in processed_repos]
@@ -819,7 +851,7 @@ PODSUMOWANIE ULEPSZEŃ:
 
         plt.tight_layout()
         comparison_filename = self.comparison_dir / "porownanie_algorytmow.png"
-        plt.savefig(comparison_filename, dpi=300, bbox_inches='tight')
+        plt.savefig(comparison_filename, dpi=150, bbox_inches='tight')  # ZMNIEJSZONE z 300 na 150
         plt.close()
 
         print(f"✅ Porównanie: {comparison_filename}")
@@ -996,7 +1028,7 @@ PODSUMOWANIE ULEPSZEŃ:
         cluster_counts = global_df['cluster_name'].value_counts()
         colors = ['#2E8B57', '#4169E1', '#FF8C00', '#696969']  # green, blue, orange, gray
 
-        wedges, texts, autotexts = ax1.pie(cluster_counts.values,
+        wedges, texts, autotexts = ax1.pie(cluster_counts.values(),
                                           labels=[f"{name}\n({count} autorów)"
                                                  for name, count in cluster_counts.items()],
                                           autopct='%1.1f%%', startangle=90, colors=colors,
@@ -1052,7 +1084,7 @@ PODSUMOWANIE ULEPSZEŃ:
                     f'{val:.3f}', ha='left', va='center', fontsize=8)
 
         plt.tight_layout()
-        plt.savefig(self.summary_dir / "globalny_rozklad_klastrow.png", dpi=300, bbox_inches='tight')
+        plt.savefig(self.summary_dir / "globalny_rozklad_klastrow.png", dpi=100, bbox_inches=None)  # USUNIĘTE bbox_inches='tight' i zmniejszone DPI
         plt.close()
 
     def create_efficiency_comparison(self, global_df, repo_summary_df):
@@ -1126,7 +1158,7 @@ PODSUMOWANIE ULEPSZEŃ:
         ax4.grid(True, alpha=0.3)
 
         plt.tight_layout()
-        plt.savefig(self.summary_dir / "analiza_efektywnosci.png", dpi=300, bbox_inches='tight')
+        plt.savefig(self.summary_dir / "analiza_efektywnosci.png", dpi=150, bbox_inches='tight')  # ZMNIEJSZONE z 300 na 150
         plt.close()
 
     def create_cluster_heatmap(self, repo_summary_df):
@@ -1195,10 +1227,7 @@ PODSUMOWANIE ULEPSZEŃ:
         ax2_twin.legend(loc='upper right')
 
         plt.tight_layout()
-        plt.savefig(self.summary_dir / "heatmapa_klastrow.png", dpi=300, bbox_inches='tight')
+        plt.savefig(self.summary_dir / "heatmapa_klastrow.png", dpi=150, bbox_inches='tight')
         plt.close()
 
-
-if __name__ == "__main__":
-    analyzer = ImprovedClusterAnalyzer()
-    analyzer.run_improved_analysis()
+ImprovedClusterAnalyzer().run_improved_analysis()

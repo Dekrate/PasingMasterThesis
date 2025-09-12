@@ -59,6 +59,13 @@
             </Attribute>
           </value>
         </entry>
+        <entry key="\fixed_logs\junit-framework_manual_log_fixed.csv">
+          <value>
+            <Attribute>
+              <option name="separator" value=":" />
+            </Attribute>
+          </value>
+        </entry>
         <entry key="\fixed_logs\mockito_manual_log_fixed.csv">
           <value>
             <Attribute>
