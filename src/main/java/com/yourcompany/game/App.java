@@ -22,7 +22,7 @@ public class App {
 
 	public static void main(String[] args) {
         // DEBUG: Analizuj konkretny commit z lombok
-        String debugCommitHash =null;
+        String debugCommitHash = null;
         String debugRepoName = null;
 
         if (debugCommitHash != null && !debugCommitHash.isEmpty()) {

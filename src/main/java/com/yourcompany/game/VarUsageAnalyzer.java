@@ -76,7 +76,7 @@ public class VarUsageAnalyzer extends AbstractFeatureAnalyzer {
         @Override
         public void visit(VarType n, Void arg) {
             n.getBegin().ifPresent(position -> {
-                System.out.println("DEBUG VarType: linia " + position.line + ", zawartość: " + n.toString());
+//                System.out.println("DEBUG VarType: linia " + position.line + ", zawartość: " + n.toString());
                 if (!processedLines.contains(position.line)) {
                     LOGGER.log(Level.FINE, "JavaParser wykrył VarType na linii: {0}", position.line);
                     processedLines.add(position.line);
@@ -91,7 +91,7 @@ public class VarUsageAnalyzer extends AbstractFeatureAnalyzer {
         @Override
         public void visit(VariableDeclarationExpr n, Void arg) {
             n.getBegin().ifPresent(position -> {
-                System.out.println("DEBUG VariableDeclarationExpr: linia " + position.line + ", zawartość: " + n.toString());
+//                System.out.println("DEBUG VariableDeclarationExpr: linia " + position.line + ", zawartość: " + n.toString());
                 if (processedLines.contains(position.line)) {
                     LOGGER.log(Level.FINE, "Linia {0} już przetworzona - pomijam VariableDeclaration", position.line);
                     super.visit(n, arg);
@@ -99,13 +99,13 @@ public class VarUsageAnalyzer extends AbstractFeatureAnalyzer {
                 }
 
                 if (containsVarType(n)) {
-                    System.out.println("DEBUG VariableDeclarationExpr zawiera var: linia " + position.line);
+//                    System.out.println("DEBUG VariableDeclarationExpr zawiera var: linia " + position.line);
                     LOGGER.log(Level.FINE, "Fallback wykrył var w deklaracji na linii {0}: {1}",
                         new Object[]{position.line, n.toString()});
                     processedLines.add(position.line);
                     handleVarOccurrence(position.line, n, "VariableDeclaration");
                 } else {
-                    System.out.println("DEBUG VariableDeclarationExpr NIE zawiera var: linia " + position.line);
+//                    System.out.println("DEBUG VariableDeclarationExpr NIE zawiera var: linia " + position.line);
                 }
             });
             super.visit(n, arg);

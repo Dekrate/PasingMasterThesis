@@ -484,14 +484,14 @@ public abstract class AbstractFeatureAnalyzer implements SyntaxAnalyzerStrategy 
         }
 
         // DEBUG dla synchronized bloków
-        System.out.println("=== DEBUG isNewFeatureByStructure ===");
-        System.out.println("filePath: " + filePath);
-        System.out.println("code: " + code);
-        System.out.println("normalizedCode: " + normalizedCode);
-        System.out.println("structuralContext: " + structuralContext);
-        System.out.println("specificContext: " + specificContext);
-        System.out.println("structuralKey: " + structuralKey);
-        System.out.println("commitKey: " + commitKey);
+//        System.out.println("=== DEBUG isNewFeatureByStructure ===");
+//        System.out.println("filePath: " + filePath);
+//        System.out.println("code: " + code);
+//        System.out.println("normalizedCode: " + normalizedCode);
+//        System.out.println("structuralContext: " + structuralContext);
+//        System.out.println("specificContext: " + specificContext);
+//        System.out.println("structuralKey: " + structuralKey);
+//        System.out.println("commitKey: " + commitKey);
 
         // NAPRAWKA: putIfAbsent zwraca null jeśli klucz nie istniał, poprzednią wartość jeśli istniał
         boolean isNewInCommit = commitFeatures.putIfAbsent(commitKey, Boolean.TRUE) == null;
@@ -503,9 +503,9 @@ public abstract class AbstractFeatureAnalyzer implements SyntaxAnalyzerStrategy 
         }
 
         boolean isNewOverall = seenFeatures.putIfAbsent(structuralKey, Boolean.TRUE) == null;
-        System.out.println("isNewOverall: " + isNewOverall);
-        System.out.println("REZULTAT: " + isNewOverall);
-        System.out.println("==========================================");
+//        System.out.println("isNewOverall: " + isNewOverall);
+//        System.out.println("REZULTAT: " + isNewOverall);
+//        System.out.println("==========================================");
 
         return isNewOverall;
     }

@@ -77,6 +77,43 @@ class TestDeduplicatorScript(unittest.TestCase):
         self.assertIn('c1', result_commits) # Z oryginału
         self.assertIn('c3', result_commits) # Z zachowanego duplikatu ('N')
         self.assertNotIn('c5', result_commits) # Z usuniętego duplikatu ('T')
+    # Tę metodę należy podmienić w pliku test_deduplikator.py
 
+    @patch('csv.DictWriter')
+    @patch('deduplikator.read_data_with_header_check')
+    @patch('builtins.input', side_effect=['T', 'N']) # Odpowiedzi dla 2 manualnych zapytań
+    def test_comprehensive_scenario_with_automatic_approval(self, mock_input, mock_read_data, mock_csv_writer):
+        """
+        Testuje złożony scenariusz: automatyczne zatwierdzenie (ten sam commit)
+        oraz manualne decyzje (różne commity) w jednym przebiegu.
+        """
+        # Przygotowanie danych wejściowych
+        row_a1 = {'author': 'a', 'commit_id': 'c1', 'feature_name': 'var', 'code_snippet': 'var a = 1;'} # Oryginał A
+        row_a2_same_commit = {'author': 'b', 'commit_id': 'c1', 'feature_name': 'var', 'code_snippet': 'var a = 1;'} # Duplikat A, ten sam commit
+        row_a3_diff_commit = {'author': 'c', 'commit_id': 'c2', 'feature_name': 'var', 'code_snippet': 'var a = 1;'} # Duplikat A, inny commit
+
+        row_b1 = {'author': 'd', 'commit_id': 'c3', 'feature_name': 'var', 'code_snippet': 'var b = 2;'} # Oryginał B
+        row_b2_diff_commit = {'author': 'e', 'commit_id': 'c4', 'feature_name': 'var', 'code_snippet': 'var b = 2;'} # Duplikat B, inny commit
+
+        test_data = [row_a1, row_a2_same_commit, row_a3_diff_commit, row_b1, row_b2_diff_commit]
+        mock_read_data.return_value = (test_data, self.header)
+
+        # Uruchomienie logiki
+        with patch("builtins.open", unittest.mock.mock_open()):
+            deduplikator.process_log_file("dummy_path.csv")
+
+        # Sprawdzenie, ile razy zapytano użytkownika
+        self.assertEqual(mock_input.call_count, 2)
+
+        # Sprawdzenie wyników zapisu
+        written_rows = mock_csv_writer.return_value.writerows.call_args[0][0]
+
+        # <<< POPRAWKA: Oczekiwany wynik to 4, a nie 3.
+        self.assertEqual(len(written_rows), 4)
+
+        written_commits = {row['commit_id'] for row in written_rows}
+        expected_commits = {'c1', 'c3', 'c4'}
+
+        self.assertEqual(written_commits, expected_commits)
 if __name__ == '__main__':
     unittest.main()
