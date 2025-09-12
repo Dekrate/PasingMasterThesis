@@ -1,0 +1,27 @@
+RAPORT ULEPSZONYCH KLASTRÓW
+========================================
+
+PROBLEM ROZWIĄZANY:
+Stary algorytm generował tylko 2 klastry dla wszystkich repozytoriów.
+Nowy algorytm używa wielokryterialnej optymalizacji.
+
+ULEPSZENIA ALGORYTMU:
+- Zwiększony zakres testowania (2-8 klastrów)
+- Wieloaspektowa ocena (Silhouette + Calinski + Davies + Balance)
+- Kombinowana optymalizacja z wagami
+- Preferowanie większej liczby klastrów przy podobnych wynikach
+
+WYNIKI:
+- Przeanalizowane repozytoria: 7
+- Repozytoria z ulepszoną liczbą klastrów: 7
+- Procent poprawy: 100.0%
+
+SZCZEGÓŁOWE WYNIKI:
+------------------------------
+junit-framework           | 46 aut. | 4 klastrów | POPRAWA
+spring-framework          | 32 aut. | 4 klastrów | POPRAWA
+jackson-databind          |  9 aut. | 4 klastrów | POPRAWA
+assertj                   |  5 aut. | 4 klastrów | POPRAWA
+gson                      |  4 aut. | 4 klastrów | POPRAWA
+lombok                    |  4 aut. | 4 klastrów | POPRAWA
+mockito                   |  4 aut. | 4 klastrów | POPRAWA
