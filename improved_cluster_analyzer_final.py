@@ -1,10 +1,10 @@
-"""
+'''
 Ulepszona Analiza Klastrów z Poprawionym Algorytmem
 ==================================================
 
 Używa wielokryterialnego algorytmu klastrowania do generowania
 właściwych liczb klastrów (2-4) zamiast uniwersalnych 2.
-"""
+'''
 
 import pandas as pd
 import numpy as np
@@ -29,9 +29,9 @@ except ImportError:
     ADJUSTTEXT_AVAILABLE = False
 
 class ImprovedClusterAnalyzer:
-    """
+    '''
     Ulepszona analiza klastrów z wielokryterialnym algorytmem optymalizacji.
-    """
+    '''
 
     def __init__(self):
         # Katalogi na wykresy
@@ -51,7 +51,7 @@ class ImprovedClusterAnalyzer:
         self.df, self.repo_commits, self.total_commits = self.load_data()
 
     def load_data(self):
-        """Ładuje wszystkie dostępne repozytoria i globalne dane o commitach"""
+        '''Ładuje wszystkie dostępne repozytoria i globalne dane o commitach'''
         print("🔄 Ładowanie danych...")
 
         fixed_logs_dir = Path("fixed_logs")
@@ -91,7 +91,7 @@ class ImprovedClusterAnalyzer:
         return df, repo_commits, global_commits
 
     def load_global_commit_data(self):
-        """Ładuje globalne dane o commitach z repozytoriów Git (wszystkie gałęzie)"""
+        '''Ładuje globalne dane o commitach z repozytoriów Git (wszystkie gałęzie)'''
         print("🔄 Ładowanie globalnych danych o commitach z wszystkich gałęzi...")
 
         global_commits = {}
@@ -203,7 +203,7 @@ class ImprovedClusterAnalyzer:
         return global_commits
 
     def prepare_repository_data(self, repo_name):
-        """Przygotowuje dane dla repozytorium z globalną aktywnością vs adopcją funkcji"""
+        '''Przygotowuje dane dla repozytorium z globalną aktywnością vs adopcją funkcji'''
         repo_authors = self.repo_commits.get(repo_name, {})  # Autorzy z nowymi funkcjami
         repo_features = self.df[self.df['repository'] == repo_name]
 
@@ -240,13 +240,13 @@ class ImprovedClusterAnalyzer:
         return pd.DataFrame(analysis_data)
 
     def advanced_clustering_optimization(self, data, features_for_clustering):
-        """
+        '''
         Stały podział na 4 logiczne klastry autorów:
         1. Liderzy Adopcji - dużo commitów + dużo nowych funkcji
         2. Tradycjonaliści - dużo commitów + mało nowych funkcji
         3. Eksperymentatorzy - mało commitów + dużo nowych funkcji
         4. Nieokreśleni - mało commitów + mało nowych funkcji
-        """
+        '''
         if len(data) < 4:
             return None, None, None
 
@@ -266,13 +266,13 @@ class ImprovedClusterAnalyzer:
         return cluster_labels, X_pca, pca
 
     def assign_cluster_meanings(self, data, cluster_labels):
-        """
+        '''
         Przypisuje logiczne znaczenia klastrom używając kwartyli dla zagwarantowania 4 różnych typów:
         - Liderzy Adopcji: Q4 commitów + Q4 funkcji
         - Tradycjonaliści: Q4 commitów + Q1-Q3 funkcji
         - Eksperymentatorzy: Q1-Q3 commitów + Q4 funkcji
         - Nieokreśleni: Q1-Q3 commitów + Q1-Q3 funkcji
-        """
+        '''
         unique_clusters = np.unique(cluster_labels)
         cluster_meanings = {}
 
@@ -361,7 +361,7 @@ class ImprovedClusterAnalyzer:
         return cluster_meanings
 
     def draw_cluster_shape(self, ax, points, color, alpha=0.2):
-        """Rysuje kształt klastra"""
+        '''Rysuje kształt klastra'''
         if len(points) < 3:
             return
 
@@ -386,7 +386,7 @@ class ImprovedClusterAnalyzer:
             ax.add_patch(ellipse)
 
     def create_improved_visualization(self, repo_name, data, cluster_labels, X_pca, pca, filename):
-        """Tworzy ulepszoną wizualizację z logicznymi nazwami klastrów"""
+        '''Tworzy ulepszoną wizualizację z logicznymi nazwami klastrów'''
         n_clusters = len(np.unique(cluster_labels))
 
         # Przypisz logiczne znaczenia klastrom
@@ -536,19 +536,19 @@ class ImprovedClusterAnalyzer:
                     text.set_fontsize(5)
 
         # Dodaj adnotacje w rogach wykresu
-        ax2.text(0.02, 0.98, '🔬 Eksperymentatorzy\n(Niskie commits\n+ Wysokie features)',
+        ax2.text(0.02, 0.98, '🔬 Eksperymentatorzy\n(Niskie commits\n+ Wysokie funkcje)',
                 transform=ax2.transAxes, fontsize=8, va='top', ha='left',
                 bbox=dict(boxstyle="round,pad=0.3", facecolor='orange', alpha=0.3))
 
-        ax2.text(0.98, 0.98, '🏆 Liderzy Adopcji\n(Wysokie commits\n+ Wysokie features)',
+        ax2.text(0.98, 0.98, '🏆 Liderzy Adopcji\n(Wysokie commits\n+ Wysokie funkcje)',
                 transform=ax2.transAxes, fontsize=8, va='top', ha='right',
                 bbox=dict(boxstyle="round,pad=0.3", facecolor='green', alpha=0.3))
 
-        ax2.text(0.02, 0.02, '❓ Nieokreśleni\n(Niskie commits\n+ Niskie features)',
+        ax2.text(0.02, 0.02, '❓ Nieokreśleni\n(Niskie commits\n+ Niskie funkcje)',
                 transform=ax2.transAxes, fontsize=8, va='bottom', ha='left',
                 bbox=dict(boxstyle="round,pad=0.3", facecolor='gray', alpha=0.3))
 
-        ax2.text(0.98, 0.02, '⚙️ Tradycjonaliści\n(Wysokie commits\n+ Niskie features)',
+        ax2.text(0.98, 0.02, '⚙️ Tradycjonaliści\n(Wysokie commits\n+ Niskie funkcje)',
                 transform=ax2.transAxes, fontsize=8, va='bottom', ha='right',
                 bbox=dict(boxstyle="round,pad=0.3", facecolor='blue', alpha=0.3))
 
@@ -687,7 +687,7 @@ class ImprovedClusterAnalyzer:
         return cluster_stats
 
     def analyze_all_repositories_improved(self, min_authors=3):
-        """Analizuje wszystkie repozytoria z ulepszonym algorytmem"""
+        '''Analizuje wszystkie repozytoria z ulepszonym algorytmem'''
         print(f"\n🚀 ULEPSZONA ANALIZA KLASTRÓW - WSZYSTKIE REPOZYTORIA")
         print(f"Próg: ≥{min_authors} autorów")
         print("=" * 60)
@@ -731,7 +731,8 @@ class ImprovedClusterAnalyzer:
                         'repo': repo_name,
                         'authors': author_count,
                         'clusters': n_clusters,
-                        'filename': filename
+                        'filename': filename,
+                        'cluster_stats': cluster_stats
                     })
 
                     print(f"   ✅ {n_clusters} klastrów → {filename.name}")
@@ -744,7 +745,7 @@ class ImprovedClusterAnalyzer:
         return processed_repos
 
     def create_comparison_summary(self, processed_repos):
-        """Tworzy podsumowanie porównawcze"""
+        '''Tworzy podsumowanie porównawcze'''
         print(f"\n📊 Tworzenie podsumowania...")
 
         # Porównanie: przed vs po
@@ -832,7 +833,7 @@ class ImprovedClusterAnalyzer:
 
         improvements = sum(1 for r in processed_repos if r['clusters'] > 2)
 
-        summary_text = f"""
+        summary_text = f'''
 PODSUMOWANIE ULEPSZEŃ:
 
 📊 Przeanalizowane repozytoria: {len(processed_repos)}
@@ -840,7 +841,7 @@ PODSUMOWANIE ULEPSZEŃ:
 📈 Procent poprawy: {improvements/len(processed_repos)*100:.0f}%
 
 🏆 NAJLEPSZE WYNIKI:
-"""
+'''
 
         # Top repozytoria według liczby klastrów
         sorted_repos = sorted(processed_repos, key=lambda x: x['clusters'], reverse=True)
@@ -862,7 +863,7 @@ PODSUMOWANIE ULEPSZEŃ:
         self.save_improvement_report(processed_repos, improvements)
 
     def save_improvement_report(self, processed_repos, improvements):
-        """Zapisuje raport ulepszeń"""
+        '''Zapisuje raport ulepszeń'''
         report_path = self.base_dir / "raport_ulepszonych_klastrow.txt"
 
         with open(report_path, 'w', encoding='utf-8') as f:
@@ -894,7 +895,7 @@ PODSUMOWANIE ULEPSZEŃ:
         print(f"✅ Raport: {report_path}")
 
     def run_improved_analysis(self):
-        """Uruchamia ulepszoną analizę"""
+        '''Uruchamia ulepszoną analizę'''
         print("🚀 ULEPSZONA ANALIZA KLASTRÓW - START")
         print("=" * 60)
 
@@ -940,195 +941,244 @@ PODSUMOWANIE ULEPSZEŃ:
             traceback.print_exc()
 
     def create_global_summary_charts(self, processed_repos):
-        """Tworzy globalne wykresy podsumowujące dla summary_charts"""
+        '''Tworzy globalne wykresy podsumowujące dla summary_charts'''
         print(f"\n📊 Tworzenie globalnych wykresów podsumowujących...")
 
         if not processed_repos:
             print("❌ Brak danych do utworzenia wykresów podsumowujących")
             return
 
-        # Zbierz dane ze wszystkich repozytoriów
-        all_cluster_data = []
-        repo_summaries = []
+        # NOWA LOGIKA: Globalna agregacja autorów
+        # Zbierz wszystkich autorów globalnie ze wszystkich repozytoriów
+        global_authors_data = {}  # {author_name: {'commits': sum, 'features': sum, 'repositories': [list]}}
 
         for repo_info in processed_repos:
             repo_name = repo_info['repo']
-
             try:
                 # Przygotuj dane dla repozytorium
                 data = self.prepare_repository_data(repo_name)
                 filtered_data = data[data['commits'] > 0].copy()
 
-                if len(filtered_data) >= 4:
-                    # Przeprowadź klastrowanie
-                    cluster_labels, X_pca, pca = self.advanced_clustering_optimization(
-                        filtered_data, ['commits', 'features', 'unique_features']
-                    )
+                if len(filtered_data) >= 1: # Zmienione z 4 na 1
+                    # Agreguj dane autorów globalnie
+                    for idx, row in filtered_data.iterrows():
+                        author = row['author']
+                        if author not in global_authors_data:
+                            global_authors_data[author] = {
+                                'commits': 0,
+                                'features': 0,
+                                'unique_features': set(),
+                                'repositories': []
+                            }
 
-                    if cluster_labels is not None:
-                        cluster_meanings = self.assign_cluster_meanings(filtered_data, cluster_labels)
-
-                        # Dodaj informacje o repozytorium do każdego autora
-                        for idx, row in filtered_data.iterrows():
-                            cluster_id = cluster_labels[idx]
-                            cluster_info = cluster_meanings.get(cluster_id, {'name': 'Nieznany', 'icon': '❓'})
-
-                            author_data = row.to_dict()
-                            author_data['repository'] = repo_name
-                            author_data['cluster_id'] = cluster_id
-                            author_data['cluster_name'] = cluster_info['name']
-                            author_data['cluster_icon'] = cluster_info['icon']
-
-                            all_cluster_data.append(author_data)
-
-                        # Podsumowanie repozytorium
-                        unique_clusters = np.unique(cluster_labels)
-                        cluster_sizes = {cluster_meanings.get(cid, {'name': f'K{cid}'})['name']:
-                                       len(filtered_data[cluster_labels == cid])
-                                       for cid in unique_clusters}
-
-                        repo_summaries.append({
-                            'repo': repo_name,
-                            'total_authors': len(filtered_data),
-                            'clusters': len(unique_clusters),
-                            'cluster_sizes': cluster_sizes,
-                            'avg_commits': filtered_data['commits'].mean(),
-                            'avg_features': filtered_data['features'].mean(),
-                            'avg_efficiency': filtered_data['features_per_commit'].mean()
-                        })
+                        # Sumuj commity i funkcje globalnie
+                        global_authors_data[author]['commits'] += row['commits']
+                        global_authors_data[author]['features'] += row['features']
+                        global_authors_data[author]['unique_features'].update(
+                            self.df[(self.df['repository'] == repo_name) &
+                                   (self.df['author'] == author)]['feature_name'].unique()
+                        )
+                        global_authors_data[author]['repositories'].append(repo_name)
 
             except Exception as e:
                 print(f"    ⚠ Błąd przy przetwarzaniu {repo_name}: {e}")
                 continue
 
-        if not all_cluster_data:
+        if not global_authors_data:
             print("❌ Brak danych do utworzenia wykresów")
             return
 
-        # Konwertuj na DataFrame
-        global_df = pd.DataFrame(all_cluster_data)
+        # Konwertuj na DataFrame z globalnymi danymi
+        global_data_list = []
+        for author, data in global_authors_data.items():
+            unique_features_count = len(data['unique_features'])
+            global_data_list.append({
+                'author': author,
+                'commits': data['commits'],
+                'features': data['features'],
+                'unique_features': unique_features_count,
+                'features_per_commit': data['features'] / data['commits'] if data['commits'] > 0 else 0,
+                'repository_count': len(data['repositories']),
+                'repositories': ', '.join(data['repositories'][:3]) + ('...' if len(data['repositories']) > 3 else '')
+            })
+
+        global_df_raw = pd.DataFrame(global_data_list)
+
+        # Przeprowadź globalne klastrowanie
+        if len(global_df_raw) >= 4:
+            cluster_labels, X_pca, pca = self.advanced_clustering_optimization(
+                global_df_raw, ['commits', 'features', 'unique_features']
+            )
+
+            if cluster_labels is not None:
+                cluster_meanings = self.assign_cluster_meanings(global_df_raw, cluster_labels)
+
+                # Dodaj informacje o klastrach do danych
+                for idx, row in global_df_raw.iterrows():
+                    cluster_id = cluster_labels[idx]
+                    cluster_info = cluster_meanings.get(cluster_id, {'name': 'Nieznany', 'icon': '❓'})
+
+                    global_df_raw.loc[idx, 'cluster_id'] = cluster_id
+                    global_df_raw.loc[idx, 'cluster_name'] = cluster_info['name']
+                    global_df_raw.loc[idx, 'cluster_icon'] = cluster_info['icon']
+
+        # Przygotuj dane repozytoriów, używając zapisanych statystyk klastrów
+        repo_summaries = []
+        for repo_info in processed_repos:
+            repo_name = repo_info['repo']
+            try:
+                # Dane są potrzebne do średnich, ale rozmiary klastrów bierzemy z `repo_info`
+                data = self.prepare_repository_data(repo_name)
+                filtered_data = data[data['commits'] > 0].copy()
+
+                if len(filtered_data) >= 4:
+                    cluster_stats = repo_info.get('cluster_stats', [])
+                    cluster_sizes = {'Liderzy Adopcji': 0, 'Tradycjonaliści': 0,
+                                     'Eksperymentatorzy': 0, 'Nieokreśleni': 0}
+
+                    for stats in cluster_stats:
+                        # Wyodrębnij nazwę typu z formatu "🏆 Liderzy Adopcji"
+                        type_name = ' '.join(stats['Typ'].split(' ')[1:])
+                        if type_name in cluster_sizes:
+                            cluster_sizes[type_name] = stats['Autorzy']
+
+                    repo_summaries.append({
+                        'repo': repo_name,
+                        'total_authors': len(filtered_data),
+                        'clusters': 4,
+                        'cluster_sizes': cluster_sizes,
+                        'avg_commits': filtered_data['commits'].mean(),
+                        'avg_features': filtered_data['features'].mean(),
+                        'avg_efficiency': filtered_data['features_per_commit'].mean()
+                    })
+            except Exception as e:
+                print(f"    ⚠ Błąd podczas agregacji danych dla repozytorium {repo_name}: {e}")
+                continue
+        
         repo_summary_df = pd.DataFrame(repo_summaries)
 
-        # WYKRES 1: Globalny rozkład klastrów autorów
-        self.create_global_cluster_distribution(global_df, repo_summary_df)
+        # WYKRES 1: Globalny rozkład klastrów autorów (z globalną agregacją)
+        self.create_global_cluster_distribution(global_df_raw, repo_summary_df)
 
-        # WYKRES 2: Porównanie efektywności między repozytoriami
-        self.create_efficiency_comparison(global_df, repo_summary_df)
+        # WYKRES 2: Porównanie efektywności między repozytoriami (z globalną agregacją)
+        self.create_efficiency_comparison(global_df_raw, repo_summary_df)
 
         # WYKRES 3: Analiza klastrów per repozytorium
         self.create_cluster_heatmap(repo_summary_df)
 
         print(f"✅ Utworzono globalne wykresy podsumowujące w {self.summary_dir}")
+        print(f"📊 Przeanalizowano {len(global_df_raw)} unikalnych autorów globalnie")
 
     def create_global_cluster_distribution(self, global_df, repo_summary_df):
-        """Tworzy wykres globalnego rozkładu klastrów"""
-        fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(24, 18))  # Zwiększony rozmiar z (18, 14)
+        '''Tworzy wykres globalnego rozkładu klastrów'''
+        fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(28, 20))  # POWIĘKSZONE z (24, 18)
         fig.suptitle('Globalny Rozkład Klastrów Autorów - Wszystkie Repozytoria',
-                     fontsize=16, fontweight='bold')
+                     fontsize=18, fontweight='bold')
+
+        # STAŁE KOLORY dla każdej grupy - ujednolicenie
+        color_map = {
+            'Liderzy Adopcji': '#2E8B57',      # green
+            'Tradycjonaliści': '#4169E1',      # blue
+            'Eksperymentatorzy': '#FF8C00',    # orange
+            'Nieokreśleni': '#696969'          # gray - JEDEN odcień
+        }
 
         # Wykres 1: Rozkład klastrów (pie chart)
         if not global_df.empty and 'cluster_name' in global_df.columns:
             cluster_counts = global_df['cluster_name'].value_counts()
 
             if not cluster_counts.empty and len(cluster_counts) > 0:
-                colors = ['#2E8B57', '#4169E1', '#FF8C00', '#696969']  # green, blue, orange, gray
+                # Użyj mapowanych kolorów
+                colors = [color_map.get(name, '#808080') for name in cluster_counts.index]
 
                 wedges, texts, autotexts = ax1.pie(cluster_counts.values,
                                                   labels=[f"{name}\n({count} autorów)"
                                                          for name, count in cluster_counts.items()],
                                                   autopct='%1.1f%%', startangle=90, colors=colors,
-                                                  textprops={'fontsize': 10})
-                ax1.set_title('Rozkład Typów Autorów\n(Wszystkie Repozytoria)')
+                                                  textprops={'fontsize': 12})
+                ax1.set_title('Rozkład Typów Autorów\n(Wszystkie Repozytoria)', fontsize=14)
             else:
                 ax1.text(0.5, 0.5, 'Brak danych do wyświetlenia',
                         ha='center', va='center', transform=ax1.transAxes)
-                ax1.set_title('Rozkład Typów Autorów\n(Brak danych)')
+                ax1.set_title('Rozkład Typów Autorów\n(Brak danych)', fontsize=14)
         else:
             ax1.text(0.5, 0.5, 'Brak danych do wyświetlenia',
                     ha='center', va='center', transform=ax1.transAxes)
-            ax1.set_title('Rozkład Typów Autorów\n(Brak danych)')
+            ax1.set_title('Rozkład Typów Autorów\n(Brak danych)', fontsize=14)
 
         # Wykres 2: Średnia efektywność per klaster
-        # EFEKTYWNOŚĆ = liczba funkcji podzielona przez liczbę commitów (features/commits)
-        # Mierzy jak dużo nowych funkcji autor wprowadza w każdym commicie
         if not global_df.empty and 'cluster_name' in global_df.columns and 'features_per_commit' in global_df.columns:
             cluster_efficiency = global_df.groupby('cluster_name')['features_per_commit'].agg(['mean', 'std'])
-            colors = ['#2E8B57', '#4169E1', '#FF8C00', '#696969']
+            # Użyj mapowanych kolorów
+            colors = [color_map.get(name, '#808080') for name in cluster_efficiency.index]
 
             bars = ax2.bar(cluster_efficiency.index, cluster_efficiency['mean'],
                           yerr=cluster_efficiency['std'], capsize=5,
-                          color=colors[:len(cluster_efficiency)], alpha=0.7)
+                          color=colors, alpha=0.7)
 
-            ax2.set_title('Średnia Efektywność per Typ Autora\n(Efektywność = Funkcje/Commit)')
-            ax2.set_ylabel('Funkcji na Commit')
-            ax2.tick_params(axis='x', rotation=45)
+            ax2.set_title('Średnia Efektywność per Typ Autora\n(Efektywność = Funkcje/Commit)', fontsize=14)
+            ax2.set_ylabel('Funkcji na Commit', fontsize=12)
+            ax2.tick_params(axis='x', rotation=45, labelsize=11)
             ax2.grid(True, alpha=0.3)
 
             # Dodaj wartości na słupkach
             for bar, mean_val in zip(bars, cluster_efficiency['mean']):
                 ax2.text(bar.get_x() + bar.get_width()/2., bar.get_height() + 0.001,
-                        f'{mean_val:.3f}', ha='center', va='bottom', fontsize=9)
+                        f'{mean_val:.3f}', ha='center', va='bottom', fontsize=10)
         else:
             ax2.text(0.5, 0.5, 'Brak danych do wyświetlenia',
                     ha='center', va='center', transform=ax2.transAxes)
-            ax2.set_title('Średnia Efektywność per Typ Autora\n(Brak danych)')
+            ax2.set_title('Średnia Efektywność per Typ Autora\n(Brak danych)', fontsize=14)
 
-        # Wykres 3: Scatter plot commits vs features (wszystkie autorzy) z etykietami
+        # Wykres 3: Scatter plot commits vs features - PO 3 ETYKIETY Z KAŻDEJ GRUPY
         if not global_df.empty and 'cluster_name' in global_df.columns:
-            colors = ['#2E8B57', '#4169E1', '#FF8C00', '#696969']
-
-            for i, (cluster_name, group) in enumerate(global_df.groupby('cluster_name')):
-                color = colors[i % len(colors)]
+            for cluster_name, group in global_df.groupby('cluster_name'):
+                color = color_map.get(cluster_name, '#808080')
                 ax3.scatter(group['commits'], group['features'],
                            label=f"{group.iloc[0]['cluster_icon']} {cluster_name}",
-                           alpha=0.6, s=50, color=color)
+                           alpha=0.6, s=60, color=color)
 
-            # DRASTYCZNE OGRANICZENIE: Tylko 3 najbardziej ekstremalne punkty z całego wykresu
-            # 1. Najwyższa aktywność (commits)
-            # 2. Najwyższa adopcja (features)
-            # 3. Najwyższa efektywność (features_per_commit)
-            top_commits = global_df.loc[global_df['commits'].idxmax()]
-            top_features = global_df.loc[global_df['features'].idxmax()]
-            top_efficiency = global_df.loc[global_df['features_per_commit'].idxmax()]
+            # NOWA LOGIKA: Po 3 etykiety dla każdej grupy
+            for cluster_name, cluster_group in global_df.groupby('cluster_name'):
+                if len(cluster_group) >= 3:
+                    # Wybierz 3 różnych autorów z każdej grupy:
+                    # 1. Najwyższa aktywność w grupie (commits)
+                    # 2. Najwyższa adopcja funkcji w grupie (features)
+                    # 3. Najwyższa efektywność w grupie (features_per_commit)
+                    top_commits_in_cluster = cluster_group.loc[cluster_group['commits'].idxmax()]
+                    top_features_in_cluster = cluster_group.loc[cluster_group['features'].idxmax()]
+                    top_efficiency_in_cluster = cluster_group.loc[cluster_group['features_per_commit'].idxmax()]
 
-            selected_points = [top_commits, top_features, top_efficiency]
-            # ZMIANA: Użyj nazw autorów zamiast etykiet typu "Max efficiency"
-            labels = [
-                f"🚀 {top_commits['author'][:15]}..." if len(top_commits['author']) > 15 else f"🚀 {top_commits['author']}",
-                f"⭐ {top_features['author'][:15]}..." if len(top_features['author']) > 15 else f"⭐ {top_features['author']}",
-                f"💎 {top_efficiency['author'][:15]}..." if len(top_efficiency['author']) > 15 else f"💎 {top_efficiency['author']}"
-            ]
+                    selected_from_cluster = [top_commits_in_cluster, top_features_in_cluster, top_efficiency_in_cluster]
 
-            # Dodaj tylko te 3 etykiety, pozwalając na nakładanie
-            for point, label in zip(selected_points, labels):
-                if point['features'] >= 5:  # Tylko jeśli ma sens
-                    cluster_color = None
-                    for j, (cluster_name, group) in enumerate(global_df.groupby('cluster_name')):
-                        if point['cluster_name'] == cluster_name:
-                            cluster_color = colors[j % len(colors)]
-                            break
+                    # Określ kolor dla klastra
+                    cluster_color = color_map.get(cluster_name, '#808080')
 
-                    if cluster_color:
-                        ax3.annotate(label,
-                                   xy=(point['commits'], point['features']),
-                                   xytext=(5, 5), textcoords='offset points',
-                                   fontsize=8, ha='left', va='bottom',
-                                   bbox=dict(boxstyle="round,pad=0.2",
-                                           facecolor=cluster_color, alpha=0.7,
-                                           edgecolor='black', linewidth=0.5),
-                                   arrowprops=dict(arrowstyle='->', color='black', alpha=0.6, lw=0.5))
+                    # Dodaj etykiety dla tej grupy
+                    for point in selected_from_cluster:
+                        if point['features'] >= 5:  # Tylko znaczące punkty
+                            author_name = point['author'][:12] + "..." if len(point['author']) > 12 else point['author']
 
-            ax3.set_xlabel('Liczba Commitów (log)')
-            ax3.set_ylabel('Liczba Funkcji (log)')
-            ax3.set_title('Aktywność vs Adopcja Funkcji\n(3 najbardziej wyróżniające się punkty)')
+                            ax3.annotate(author_name,
+                                       xy=(point['commits'], point['features']),
+                                       xytext=(5, 5), textcoords='offset points',
+                                       fontsize=9, ha='left', va='bottom',
+                                       bbox=dict(boxstyle="round,pad=0.3",
+                                               facecolor=cluster_color, alpha=0.8,
+                                               edgecolor='black', linewidth=0.5),
+                                       arrowprops=dict(arrowstyle='->', color='black', alpha=0.7, lw=0.5))
+
+            ax3.set_xlabel('Liczba Commitów (log)', fontsize=12)
+            ax3.set_ylabel('Liczba Funkcji (log)', fontsize=12)
+            ax3.set_title('Aktywność vs Adopcja Funkcji\n(Po 3 reprezentatywnych autorów z każdej grupy)', fontsize=14)
             ax3.set_xscale('log')
             ax3.set_yscale('symlog')
-            ax3.legend(fontsize=9)
+            ax3.legend(fontsize=11)
             ax3.grid(True, alpha=0.3)
         else:
             ax3.text(0.5, 0.5, 'Brak danych do wyświetlenia',
                     ha='center', va='center', transform=ax3.transAxes)
-            ax3.set_title('Aktywność vs Adopcja Funkcji\n(Brak danych)')
+            ax3.set_title('Aktywność vs Adopcja Funkcji\n(Brak danych)', fontsize=14)
 
         # Wykres 4: Top repozytoria po średniej efektywności
         if not repo_summary_df.empty and 'avg_efficiency' in repo_summary_df.columns:
@@ -1138,37 +1188,39 @@ PODSUMOWANIE ULEPSZEŃ:
                            color='skyblue', alpha=0.7)
             ax4.set_yticks(range(len(top_repos)))
             ax4.set_yticklabels([repo[:15] + "..." if len(repo) > 15 else repo
-                                for repo in top_repos['repo']], fontsize=9)
-            ax4.set_xlabel('Średnia Efektywność (Funkcje/Commit)')
-            ax4.set_title('Top 10 Repozytoriów\n(Według Efektywności)')
+                                for repo in top_repos['repo']], fontsize=10)
+            ax4.set_xlabel('Średnia Efektywność (Funkcje/Commit)', fontsize=12)
+            ax4.set_title('Top 10 Repozytoriów\n(Według Efektywności)', fontsize=14)
             ax4.grid(True, alpha=0.3)
 
             # Dodaj wartości na słupkach
             for i, (bar, val) in enumerate(zip(bars, top_repos['avg_efficiency'])):
                 ax4.text(bar.get_width() + 0.0001, bar.get_y() + bar.get_height()/2,
-                        f'{val:.3f}', ha='left', va='center', fontsize=8)
+                        f'{val:.3f}', ha='left', va='center', fontsize=9)
         else:
             ax4.text(0.5, 0.5, 'Brak danych do wyświetlenia',
                     ha='center', va='center', transform=ax4.transAxes)
-            ax4.set_title('Top 10 Repozytoriów\n(Brak danych)')
+            ax4.set_title('Top 10 Repozytoriów\n(Brak danych)', fontsize=14)
 
         plt.tight_layout()
-        plt.savefig(self.summary_dir / "globalny_rozklad_klastrow.png", dpi=150, bbox_inches='tight')  # Zwiększone DPI z 100 na 150
+        plt.savefig(self.summary_dir / "globalny_rozklad_klastrow.png", dpi=200, bbox_inches='tight')  # ZWIĘKSZONE DPI z 150 na 200
         plt.close()
 
     def create_efficiency_comparison(self, global_df, repo_summary_df):
-        """Tworzy wykres porównania efektywności"""
-        fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(20, 14))  # Zwiększone z (18, 14)
+        '''Tworzy wykres porównania efektywności'''
+        fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(24, 16))  # POWIĘKSZONE z (20, 14)
         fig.suptitle('Analiza Efektywności Adopcji Nowych Funkcji Java',
-                     fontsize=16, fontweight='bold')
+                     fontsize=18, fontweight='bold')
+
+        # STAŁE KOLORY - ujednolicenie z innymi wykresami
+        color_map = {'Liderzy Adopcji': '#2E8B57', 'Eksperymentatorzy': '#FF8C00',
+                    'Tradycjonaliści': '#4169E1', 'Nieokreśleni': '#696969'}
 
         # Wykres 1: Boxplot efektywności per klaster
         cluster_order = ['Liderzy Adopcji', 'Eksperymentatorzy', 'Tradycjonaliści', 'Nieokreśleni']
         efficiency_data = []
         cluster_names = []
         colors = []
-        color_map = {'Liderzy Adopcji': '#2E8B57', 'Eksperymentatorzy': '#FF8C00',
-                    'Tradycjonaliści': '#4169E1', 'Nieokreśleni': '#696969'}
 
         for cluster_name in cluster_order:
             if cluster_name in global_df['cluster_name'].values:
@@ -1182,9 +1234,9 @@ PODSUMOWANIE ULEPSZEŃ:
             patch.set_facecolor(color)
             patch.set_alpha(0.7)
 
-        ax1.set_ylabel('Funkcji na Commit')
-        ax1.set_title('Rozkład Efektywności per Typ Autora')
-        ax1.tick_params(axis='x', rotation=45)
+        ax1.set_ylabel('Funkcji na Commit', fontsize=12)
+        ax1.set_title('Rozkład Efektywności per Typ Autora', fontsize=14)
+        ax1.tick_params(axis='x', rotation=45, labelsize=11)
         ax1.grid(True, alpha=0.3)
 
         # Wykres 2: Histogram efektywności
@@ -1194,55 +1246,54 @@ PODSUMOWANIE ULEPSZEŃ:
                    linestyle='--', label=f'Średnia: {global_df["features_per_commit"].mean():.3f}')
         ax2.axvline(global_df['features_per_commit'].median(), color='orange',
                    linestyle='--', label=f'Mediana: {global_df["features_per_commit"].median():.3f}')
-        ax2.set_xlabel('Efektywność (Funkcji na Commit)')
-        ax2.set_ylabel('Liczba Autorów')
-        ax2.set_title('Rozkład Efektywności Wszystkich Autorów')
-        ax2.legend()
+        ax2.set_xlabel('Efektywność (Funkcji na Commit)', fontsize=12)
+        ax2.set_ylabel('Liczba Autorów', fontsize=12)
+        ax2.set_title('Rozkład Efektywności Wszystkich Autorów', fontsize=14)
+        ax2.legend(fontsize=11)
         ax2.grid(True, alpha=0.3)
 
-        # Wykres 3: Efektywność vs Liczba commitów z etykietami autorów
+        # Wykres 3: Efektywność vs Liczba commitów z etykietami autorów - PO 3 Z KAŻDEJ GRUPY
         for cluster_name, group in global_df.groupby('cluster_name'):
             color = color_map.get(cluster_name, 'gray')
             ax3.scatter(group['commits'], group['features_per_commit'],
                        label=f"{group.iloc[0]['cluster_icon']} {cluster_name}",
-                       alpha=0.6, s=50, color=color)
+                       alpha=0.6, s=60, color=color)
 
-        # DRASTYCZNE OGRANICZENIE: Tylko 2 najbardziej ekstremalne punkty
-        # 1. Najwyższa efektywność (features_per_commit)
-        # 2. Najwyższa aktywność z wysoką efektywnością
-        top_efficiency = global_df.loc[global_df['features_per_commit'].idxmax()]
-        high_activity_efficient = global_df[global_df['features_per_commit'] >= global_df['features_per_commit'].quantile(0.8)]
-        if not high_activity_efficient.empty:
-            top_activity_efficient = high_activity_efficient.loc[high_activity_efficient['commits'].idxmax()]
-        else:
-            top_activity_efficient = top_efficiency  # Fallback
+        # NOWA LOGIKA: Po 3 etykiety dla każdej grupy w wykresie efektywności
+        for cluster_name, cluster_group in global_df.groupby('cluster_name'):
+            if len(cluster_group) >= 3:
+                # Wybierz 3 różnych autorów z każdej grupy:
+                # 1. Najwyższa efektywność w grupie
+                # 2. Najwyższa aktywność w grupie (commits)
+                # 3. Najwyższa adopcja funkcji w grupie (features)
+                top_efficiency_in_cluster = cluster_group.loc[cluster_group['features_per_commit'].idxmax()]
+                top_commits_in_cluster = cluster_group.loc[cluster_group['commits'].idxmax()]
+                top_features_in_cluster = cluster_group.loc[cluster_group['features'].idxmax()]
 
-        selected_points = [top_efficiency, top_activity_efficient]
-        # ZMIANA: Użyj nazw autorów zamiast etykiet typu "Max efficiency"
-        labels = [
-            f"💎 {top_efficiency['author'][:15]}..." if len(top_efficiency['author']) > 15 else f"💎 {top_efficiency['author']}",
-            f"🚀 {top_activity_efficient['author'][:15]}..." if len(top_activity_efficient['author']) > 15 else f"🚀 {top_activity_efficient['author']}"
-        ]
+                selected_from_cluster = [top_efficiency_in_cluster, top_commits_in_cluster, top_features_in_cluster]
 
-        # Dodaj tylko te 2 etykiety, pozwalając na nakładanie
-        for point, label in zip(selected_points, labels):
-            if point['features_per_commit'] >= 0.005:  # Tylko znaczące
-                cluster_color = color_map.get(point['cluster_name'], 'gray')
+                # Określ kolor dla klastra
+                cluster_color = color_map.get(cluster_name, '#808080')
 
-                ax3.annotate(label,
-                           xy=(point['commits'], point['features_per_commit']),
-                           xytext=(5, 5), textcoords='offset points',
-                           fontsize=8, ha='left', va='bottom',
-                           bbox=dict(boxstyle="round,pad=0.2",
-                                   facecolor=cluster_color, alpha=0.7,
-                                   edgecolor='black', linewidth=0.5),
-                           arrowprops=dict(arrowstyle='->', color='black', alpha=0.6, lw=0.5))
+                # Dodaj etykiety dla tej grupy
+                for point in selected_from_cluster:
+                    if point['features_per_commit'] >= 0.005:  # Tylko znaczące punkty
+                        author_name = point['author'][:12] + "..." if len(point['author']) > 12 else point['author']
 
-        ax3.set_xlabel('Liczba Commitów (log)')
-        ax3.set_ylabel('Efektywność (Funkcji na Commit)')
-        ax3.set_title('Efektywność vs Aktywność Autora\n(2 najbardziej wyróżniające się punkty)')
+                        ax3.annotate(author_name,
+                                   xy=(point['commits'], point['features_per_commit']),
+                                   xytext=(5, 5), textcoords='offset points',
+                                   fontsize=9, ha='left', va='bottom',
+                                   bbox=dict(boxstyle="round,pad=0.3",
+                                           facecolor=cluster_color, alpha=0.8,
+                                           edgecolor='black', linewidth=0.5),
+                                   arrowprops=dict(arrowstyle='->', color='black', alpha=0.7, lw=0.5))
+
+        ax3.set_xlabel('Liczba Commitów (log)', fontsize=12)
+        ax3.set_ylabel('Efektywność (Funkcji na Commit)', fontsize=12)
+        ax3.set_title('Efektywność vs Aktywność Autora\n(Po 3 reprezentatywnych autorów z każdej grupy)', fontsize=14)
         ax3.set_xscale('log')
-        ax3.legend(fontsize=9)
+        ax3.legend(fontsize=11)
         ax3.grid(True, alpha=0.3)
 
         # Wykres 4: Średnia efektywność per repozytorium
@@ -1252,17 +1303,17 @@ PODSUMOWANIE ULEPSZEŃ:
                        color='lightcoral', alpha=0.7)
         ax4.set_yticks(range(len(repo_efficiency)))
         ax4.set_yticklabels([repo[:20] + "..." if len(repo) > 20 else repo
-                            for repo in repo_efficiency['repo']], fontsize=8)
-        ax4.set_xlabel('Średnia Efektywność')
-        ax4.set_title('Efektywność per Repozytorium')
+                            for repo in repo_efficiency['repo']], fontsize=10)
+        ax4.set_xlabel('Średnia Efektywność', fontsize=12)
+        ax4.set_title('Efektywność per Repozytorium', fontsize=14)
         ax4.grid(True, alpha=0.3)
 
         plt.tight_layout()
-        plt.savefig(self.summary_dir / "analiza_efektywnosci.png", dpi=150, bbox_inches='tight')
+        plt.savefig(self.summary_dir / "analiza_efektywnosci.png", dpi=200, bbox_inches='tight')  # ZWIĘKSZONE DPI z 150 na 200
         plt.close()
 
     def create_cluster_heatmap(self, repo_summary_df):
-        """Tworzy heatmapę klastrów per repozytorium"""
+        '''Tworzy heatmapę klastrów per repozytorium'''
         # Przygotuj dane dla heatmapy
         cluster_types = ['Liderzy Adopcji', 'Tradycjonaliści', 'Eksperymentatorzy', 'Nieokreśleni']
         heatmap_data = []
@@ -1282,53 +1333,53 @@ PODSUMOWANIE ULEPSZEŃ:
                                  columns=['🏆 Liderzy', '⚙️ Tradycjonaliści',
                                          '🔬 Eksperymentatorzy', '❓ Nieokreśleni'])
 
-        # Utwórz wykres
-        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(20, 12))  # Zwiększone z (18, 10)
-        fig.suptitle('Rozkład Typów Autorów per Repozytorium', fontsize=16, fontweight='bold')
+        # Utwórz wykres - POWIĘKSZONY
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(24, 14))  # POWIĘKSZONE z (20, 12)
+        fig.suptitle('Rozkład Typów Autorów per Repozytorium', fontsize=18, fontweight='bold')
 
         # Heatmapa procentowa
         im1 = ax1.imshow(heatmap_df.values, cmap='YlOrRd', aspect='auto', vmin=0, vmax=100)
         ax1.set_xticks(range(len(heatmap_df.columns)))
-        ax1.set_xticklabels(heatmap_df.columns, rotation=45, ha='right')
+        ax1.set_xticklabels(heatmap_df.columns, rotation=45, ha='right', fontsize=12)
         ax1.set_yticks(range(len(heatmap_df.index)))
-        ax1.set_yticklabels(heatmap_df.index, fontsize=9)
-        ax1.set_title('Procentowy Rozkład Typów Autorów')
+        ax1.set_yticklabels(heatmap_df.index, fontsize=11)
+        ax1.set_title('Procentowy Rozkład Typów Autorów', fontsize=14)
 
         # Dodaj wartości do komórek
         for i in range(len(heatmap_df.index)):
             for j in range(len(heatmap_df.columns)):
                 value = heatmap_df.iloc[i, j]
                 ax1.text(j, i, f'{value:.0f}%', ha='center', va='center',
-                        color='white' if value > 50 else 'black', fontsize=8)
+                        color='white' if value > 50 else 'black', fontsize=9)
 
         # Kolorbar
         cbar1 = plt.colorbar(im1, ax=ax1)
-        cbar1.set_label('Procent Autorów')
+        cbar1.set_label('Procent Autorów', fontsize=12)
 
-        # Wykres słupkowy - statystyki repozytoriów
+        # UPROSZCZONE statystyki repozytoriów - tylko liczba autorów (bez nakładających się wykresów)
         repo_stats = repo_summary_df.sort_values('total_authors', ascending=True)
 
         bars = ax2.barh(range(len(repo_stats)), repo_stats['total_authors'],
-                       color='steelblue', alpha=0.7, label='Autorzy')
-        ax2_twin = ax2.twiny()
-        bars2 = ax2_twin.barh(range(len(repo_stats)), repo_stats['avg_efficiency'] * 1000,
-                             color='orange', alpha=0.5, label='Efektywność × 1000')
+                       color='steelblue', alpha=0.7)
 
         ax2.set_yticks(range(len(repo_stats)))
         ax2.set_yticklabels([repo[:15] + "..." if len(repo) > 15 else repo
-                            for repo in repo_stats['repo']], fontsize=9)
-        ax2.set_xlabel('Liczba Autorów', color='steelblue')
-        ax2_twin.set_xlabel('Efektywność × 1000', color='orange')
-        ax2.set_title('Statystyki Repozytoriów')
+                            for repo in repo_stats['repo']], fontsize=11)
+        ax2.set_xlabel('Liczba Autorów', fontsize=12)
+        ax2.set_title('Liczba Autorów per Repozytorium', fontsize=14)
         ax2.grid(True, alpha=0.3)
 
-        # Legendy
-        ax2.legend(loc='lower right')
-        ax2_twin.legend(loc='upper right')
+        # Dodaj wartości na słupkach
+        for i, (bar, val) in enumerate(zip(bars, repo_stats['total_authors'])):
+            ax2.text(bar.get_width() + 0.5, bar.get_y() + bar.get_height()/2,
+                    f'{int(val)}', ha='left', va='center', fontsize=9)
 
         plt.tight_layout()
-        plt.savefig(self.summary_dir / "heatmapa_klastrow.png", dpi=150, bbox_inches='tight')
+        plt.savefig(self.summary_dir / "heatmapa_klastrow.png", dpi=200, bbox_inches='tight')  # ZWIĘKSZONE DPI z 150 na 200
         plt.close()
 
+        print(f"✅ Utworzono mapę cieplną klastrów w {self.summary_dir}")
 
-ImprovedClusterAnalyzer().run_improved_analysis()
+
+if __name__ == "__main__":
+    ImprovedClusterAnalyzer().run_improved_analysis()
