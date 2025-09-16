@@ -1204,11 +1204,13 @@ PODSUMOWANIE ULEPSZEŃ:
         # Wykres 1: Boxplot efektywności per klaster
         if not global_df.empty and 'cluster_name' in global_df.columns:
             cluster_order = ['Liderzy Adopcji', 'Eksperymentatorzy', 'Tradycjonaliści', 'Nieokreśleni']
-            efficiency_data = [global_df[global_df['cluster_name'] == name]['features_per_commit'] for name in cluster_order if name in global_df['cluster_name'].values]
-            colors = [color_map[name] for name in cluster_order if name in global_df['cluster_name'].values]
+            # Filter to only include clusters present in the data
+            valid_cluster_order = [name for name in cluster_order if name in global_df['cluster_name'].unique()]
+            efficiency_data = [global_df[global_df['cluster_name'] == name]['features_per_commit'] for name in valid_cluster_order]
+            colors = [color_map[name] for name in valid_cluster_order]
             
             if efficiency_data:
-                bp = ax1.boxplot(efficiency_data, labels=[name for name in cluster_order if name in global_df['cluster_name'].values], patch_artist=True)
+                bp = ax1.boxplot(efficiency_data, labels=valid_cluster_order, patch_artist=True)
                 for patch, color in zip(bp['boxes'], colors):
                     patch.set_facecolor(color)
                     patch.set_alpha(0.7)
@@ -1218,15 +1220,16 @@ PODSUMOWANIE ULEPSZEŃ:
                 ax1.tick_params(axis='x', rotation=45, labelsize=11)
                 ax1.grid(True, alpha=0.3)
 
-        # Wykres 2: ZMIANA - Top 20 najbardziej efektywnych autorów (zamiast histogramu)
+        # Wykres 2: Top 20 najbardziej efektywnych autorów
+        top_20_authors = pd.DataFrame()
         if not global_df.empty and 'features_per_commit' in global_df.columns:
-            top_authors = global_df.nlargest(20, 'features_per_commit')
-            top_authors = top_authors.sort_values('features_per_commit', ascending=True) # For horizontal bar chart
+            top_20_authors = global_df.nlargest(20, 'features_per_commit')
+            top_authors_sorted = top_20_authors.sort_values('features_per_commit', ascending=True)
 
-            bars = ax2.barh(range(len(top_authors)), top_authors['features_per_commit'],
+            bars = ax2.barh(range(len(top_authors_sorted)), top_authors_sorted['features_per_commit'],
                            color='mediumseagreen', alpha=0.8)
-            ax2.set_yticks(range(len(top_authors)))
-            ax2.set_yticklabels(top_authors['author'], fontsize=10)
+            ax2.set_yticks(range(len(top_authors_sorted)))
+            ax2.set_yticklabels(top_authors_sorted['author'], fontsize=10)
             ax2.set_xlabel('Efektywność (Funkcji na Commit)', fontsize=12)
             ax2.set_ylabel('Autor', fontsize=12)
             ax2.set_title('Top 20 Najbardziej Efektywnych Autorów', fontsize=14)
@@ -1240,46 +1243,56 @@ PODSUMOWANIE ULEPSZEŃ:
             ax2.text(0.5, 0.5, 'Brak danych', ha='center', va='center', transform=ax2.transAxes)
             ax2.set_title('Top 20 Najbardziej Efektywnych Autorów', fontsize=14)
 
-        # Wykres 3: Efektywność vs Liczba commitów z poprawionymi etykietami
+        # Wykres 3: Efektywność vs Liczba commitów z rozszerzonymi etykietami
         if not global_df.empty and 'cluster_name' in global_df.columns:
             texts_ax3 = []
             for cluster_name, group in global_df.groupby('cluster_name'):
                 color = color_map.get(cluster_name, 'gray')
                 ax3.scatter(group['commits'], group['features_per_commit'], label=f"{group.iloc[0]['cluster_icon']} {cluster_name}", alpha=0.6, s=60, color=color)
 
-            # NOWA LOGIKA: Po 3 unikalnych reprezentantów z każdej grupy
+            # ZBIERZ AUTORÓW DO ETYKIETOWANIA
+            authors_to_label = set()
+            # 1. Dodaj top 20 efektywnych autorów
+            if not top_20_authors.empty:
+                authors_to_label.update(top_20_authors['author'].tolist())
+
+            # 2. Dodaj 3 reprezentantów z każdego klastra
             for cluster_name, cluster_group in global_df.groupby('cluster_name'):
                 if not cluster_group.empty:
-                    authors_to_label = set()
-                    if 'features_per_commit' in cluster_group.columns:
-                        authors_to_label.add(cluster_group.loc[cluster_group['features_per_commit'].idxmax()]['author'])
-                    if 'commits' in cluster_group.columns:
-                        authors_to_label.add(cluster_group.loc[cluster_group['commits'].idxmax()]['author'])
-                    if 'features' in cluster_group.columns:
-                        authors_to_label.add(cluster_group.loc[cluster_group['features'].idxmax()]['author'])
+                    # Najwyższa efektywność
+                    authors_to_label.add(cluster_group.loc[cluster_group['features_per_commit'].idxmax()]['author'])
+                    # Najwięcej commitów
+                    authors_to_label.add(cluster_group.loc[cluster_group['commits'].idxmax()]['author'])
+                    # Najwięcej funkcji
+                    authors_to_label.add(cluster_group.loc[cluster_group['features'].idxmax()]['author'])
 
-                    if len(authors_to_label) < 3 and len(cluster_group) > len(authors_to_label):
-                        remaining = cluster_group[~cluster_group['author'].isin(authors_to_label)]
-                        additional = remaining.nlargest(3 - len(authors_to_label), 'features_per_commit')
-                        authors_to_label.update(additional['author'].tolist())
+            # Filtruj dane tylko dla autorów do etykietowania
+            points_to_label_df = global_df[global_df['author'].isin(authors_to_label)]
 
-                    points_to_label = cluster_group[cluster_group['author'].isin(authors_to_label)]
-                    cluster_color = color_map.get(cluster_name, '#808080')
-
-                    for _, point in points_to_label.iterrows():
-                        author_name = point['author'][:12] + "..." if len(point['author']) > 12 else point['author']
-                        text = ax3.annotate(author_name, xy=(point['commits'], point['features_per_commit']), xytext=(5, 5), textcoords='offset points', fontsize=9, ha='left', va='bottom', bbox=dict(boxstyle="round,pad=0.3", facecolor=cluster_color, alpha=0.8, edgecolor='black', linewidth=0.5), arrowprops=dict(arrowstyle='->', color='black', alpha=0.7, lw=0.5))
-                        texts_ax3.append(text)
+            # Dodaj etykiety
+            for _, point in points_to_label_df.iterrows():
+                author_name = point['author'][:12] + "..." if len(point['author']) > 12 else point['author']
+                cluster_color = color_map.get(point['cluster_name'], '#808080')
+                text = ax3.annotate(author_name, 
+                                    xy=(point['commits'], point['features_per_commit']), 
+                                    xytext=(5, 5), 
+                                    textcoords='offset points', 
+                                    fontsize=9, ha='left', va='bottom', 
+                                    bbox=dict(boxstyle="round,pad=0.3", facecolor=cluster_color, alpha=0.8, edgecolor='black', linewidth=0.5), 
+                                    arrowprops=dict(arrowstyle='->', color='black', alpha=0.7, lw=0.5))
+                texts_ax3.append(text)
 
             if ADJUSTTEXT_AVAILABLE and texts_ax3:
                 try:
-                    adjust_text(texts_ax3, ax=ax3, expand_points=(2, 2), expand_text=(1.5, 1.5), arrowprops=dict(arrowstyle='->', color='gray', alpha=0.6, lw=0.5), force_points=1.5, force_text=1.5, lim=2000)
+                    adjust_text(texts_ax3, ax=ax3, expand_points=(2, 2), expand_text=(1.5, 1.5), 
+                                arrowprops=dict(arrowstyle='->', color='gray', alpha=0.6, lw=0.5), 
+                                force_points=1.5, force_text=1.5, lim=2000)
                 except Exception as e:
                     print(f"    ⚠ Błąd adjustText: {e}")
 
             ax3.set_xlabel('Liczba Commitów (log)', fontsize=12)
             ax3.set_ylabel('Efektywność (Funkcji na Commit)', fontsize=12)
-            ax3.set_title('Efektywność vs Aktywność Autora\n(3 reprezentatywnych autorów z każdej grupy)', fontsize=14)
+            ax3.set_title('Efektywność vs Aktywność Autora\n(Etykiety dla Top 20 Efektywnych i Reprezentantów Klastrów)', fontsize=14)
             ax3.set_xscale('log')
             ax3.legend(fontsize=11)
             ax3.grid(True, alpha=0.3)
