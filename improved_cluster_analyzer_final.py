@@ -48,11 +48,12 @@ class ImprovedClusterAnalyzer:
         sns.set_palette("tab10")
 
         # Load data
+        self.per_repo_author_commits = {}
         self.df, self.repo_commits, self.total_commits = self.load_data()
 
     def load_data(self):
         """Loads all available repositories and global commit data."""
-        print("🔄 Loading data...")
+        print("Loading data...")
 
         fixed_logs_dir = Path("fixed_logs")
         csv_files = list(fixed_logs_dir.glob("*_manual_log_fixed.csv"))
@@ -86,13 +87,13 @@ class ImprovedClusterAnalyzer:
         # Load global commit data from Git repositories
         global_commits = self.load_global_commit_data()
 
-        print(f"✅ Loaded {len(repo_commits)} repositories, {len(global_commits)} authors globally")
+        print(f"Loaded {len(repo_commits)} repositories, {len(global_commits)} authors globally")
 
         return df, repo_commits, global_commits
 
     def load_global_commit_data(self):
         """Loads global commit data from Git repositories (all branches)."""
-        print("🔄 Loading global commit data from all branches...")
+        print("Loading global commit data from all branches...")
 
         global_commits = {}
         repo_list = []
@@ -124,7 +125,7 @@ class ImprovedClusterAnalyzer:
 
                     try:
                         # First, update info about remote branches
-                        print(f"  🔄 Updating branch information...")
+                        print(f"  Updating branch information...")
                         subprocess.run(["git", "fetch", "--all"],
                                      capture_output=True, timeout=60, encoding='utf-8', errors='replace')
 
@@ -140,7 +141,7 @@ class ImprovedClusterAnalyzer:
 
                         for cmd in commands_to_try:
                             try:
-                                print(f"  🔍 Trying: {' '.join(cmd)}")
+                                print(f"  Trying: {' '.join(cmd)}")
                                 result = subprocess.run(cmd, capture_output=True, text=True, timeout=30, encoding='utf-8', errors='replace')
 
                                 if result.returncode == 0 and result.stdout.strip():
@@ -160,16 +161,17 @@ class ImprovedClusterAnalyzer:
                                     break
 
                             except Exception as e:
-                                print(f"    ⚠ Command error: {e}")
+                                print(f"    Command error: {e}")
                                 continue
 
                         if success:
+                            self.per_repo_author_commits[repo_name] = repo_commits.copy()
                             for author_name, commit_count in repo_commits.items():
                                 if author_name not in global_commits:
                                     global_commits[author_name] = 0
                                 global_commits[author_name] += commit_count
 
-                            print(f"  ✅ {repo_name}: {len(repo_commits)} authors, {sum(repo_commits.values())} commits (all branches)")
+                            print(f"  {repo_name}: {len(repo_commits)} authors, {sum(repo_commits.values())} commits (all branches)")
 
                             try:
                                 branches_result = subprocess.run(
@@ -178,22 +180,22 @@ class ImprovedClusterAnalyzer:
                                 )
                                 if branches_result.returncode == 0:
                                     branches = [b.strip().replace('* ', '') for b in branches_result.stdout.split('\n') if b.strip()]
-                                    print(f"    📊 Found {len(branches)} branches")
+                                    print(f"    Found {len(branches)} branches")
                             except:
                                 pass
                         else:
-                            print(f"  ❌ {repo_name}: failed to get commit data")
+                            print(f"  {repo_name}: failed to get commit data")
 
                     finally:
                         os.chdir(original_cwd)
 
                 else:
-                    print(f"  ⚠ {repo_name}: directory does not exist or no .git")
+                    print(f"  {repo_name}: directory does not exist or no .git")
 
             except Exception as e:
-                print(f"  ❌ {repo_name}: error: {e}")
+                print(f"  {repo_name}: error: {e}")
 
-        print(f"✅ Loaded global data for {len(global_commits)} authors from all branches")
+        print(f"Loaded global data for {len(global_commits)} authors from all branches")
         return global_commits
 
     def prepare_repository_data(self, repo_name):
@@ -275,7 +277,7 @@ class ImprovedClusterAnalyzer:
         commits_q75 = data['commits'].quantile(0.75)
         features_q75 = data['features'].quantile(0.75)
 
-        print(f"  📊 Quartiles: Commits Q4={commits_q75:.1f}, Features Q4={features_q75:.1f}")
+        print(f"  Quartiles: Commits Q4={commits_q75:.1f}, Features Q4={features_q75:.1f}")
 
         cluster_priorities = []
         for cluster_id, stats in cluster_stats.items():
@@ -290,28 +292,24 @@ class ImprovedClusterAnalyzer:
             {
                 'name': 'Adoption Leaders',
                 'description': 'Highest activity + Most new features',
-                'icon': '🏆',
                 'color': 'green',
                 'criteria': 'High commits + High features'
             },
             {
                 'name': 'Traditionalists',
                 'description': 'High activity + Conservative approach',
-                'icon': '⚙️',
                 'color': 'blue',
                 'criteria': 'High commits + Medium/Low features'
             },
             {
                 'name': 'Experimenters',
                 'description': 'Moderate activity + Eager to innovate',
-                'icon': '🔬',
                 'color': 'orange',
                 'criteria': 'Medium commits + High features'
             },
             {
                 'name': 'Uncategorized',
                 'description': 'Low activity + Few new features',
-                'icon': '❓',
                 'color': 'gray',
                 'criteria': 'Low commits + Low features'
             }
@@ -327,7 +325,7 @@ class ImprovedClusterAnalyzer:
                     'mean_features': stats['mean_features'],
                     'size': stats['size']
                 }
-                print(f"    {label['icon']} Cluster {cluster_id} → {label['name']} "
+                print(f"    Cluster {cluster_id} → {label['name']} "
                       f"(score: {score:.2f}, commits: {stats['mean_commits']:.1f}, "
                       f"features: {stats['mean_features']:.1f}, authors: {stats['size']})")
 
@@ -370,8 +368,8 @@ class ImprovedClusterAnalyzer:
             
             cluster_data = data[cluster_mask]
             cluster_pca = X_pca[cluster_mask]
-            cluster_info = cluster_meanings.get(cluster_id, {'name': f'Cluster {cluster_id}', 'icon': ''})
-            cluster_label = f"{cluster_info['icon']} {cluster_info['name']}"
+            cluster_info = cluster_meanings.get(cluster_id, {'name': f'Cluster {cluster_id}'})
+            cluster_label = f"{cluster_info['name']}"
             ax1.scatter(cluster_pca[:, 0], cluster_pca[:, 1], c=[colors[i]], label=cluster_label, alpha=0.8, s=120, edgecolors='black', linewidth=1.5)
 
             for j, (idx, row) in enumerate(cluster_data.iterrows()):
@@ -385,7 +383,7 @@ class ImprovedClusterAnalyzer:
             try:
                 adjust_text(texts, ax=ax1, expand_points=(1.5, 1.5), expand_text=(1.2, 1.2), arrowprops=dict(arrowstyle='->', color='gray', alpha=0.6, lw=0.5), force_points=0.5, force_text=0.5, lim=1000)
             except Exception as e:
-                print(f"    ⚠ adjustText error: {e}")
+                print(f"    adjustText error: {e}")
                 for text in texts:
                     text.set_fontsize(5)
 
@@ -406,8 +404,8 @@ class ImprovedClusterAnalyzer:
         for i, cluster_id in enumerate(unique_clusters):
             cluster_mask = cluster_labels == cluster_id
             cluster_data = data[cluster_mask]
-            cluster_info = cluster_meanings.get(cluster_id, {'name': f'Cluster {cluster_id}', 'icon': ''})
-            cluster_label = f"{cluster_info['icon']} {cluster_info['name']}"
+            cluster_info = cluster_meanings.get(cluster_id, {'name': f'Cluster {cluster_id}'})
+            cluster_label = f"{cluster_info['name']}"
             ax2.scatter(cluster_data['commits'], cluster_data['features'], c=[colors[i]], label=cluster_label, alpha=0.8, s=150, edgecolors='black', linewidth=2)
 
             for _, row in cluster_data.iterrows():
@@ -425,14 +423,14 @@ class ImprovedClusterAnalyzer:
             try:
                 adjust_text(texts_ax2, ax=ax2, expand_points=(1.3, 1.3), expand_text=(1.1, 1.1), arrowprops=dict(arrowstyle='->', color='gray', alpha=0.5, lw=0.4), force_points=0.3, force_text=0.3, lim=800)
             except Exception as e:
-                print(f"    ⚠ adjustText error in quartile chart: {e}")
+                print(f"    adjustText error in quartile chart: {e}")
                 for text in texts_ax2:
                     text.set_fontsize(5)
 
-        ax2.text(0.02, 0.98, '🔬 Experimenters\n(Low Commits\n+ High Features)', transform=ax2.transAxes, fontsize=8, va='top', ha='left', bbox=dict(boxstyle="round,pad=0.3", facecolor='orange', alpha=0.3))
-        ax2.text(0.98, 0.98, '🏆 Adoption Leaders\n(High Commits\n+ High Features)', transform=ax2.transAxes, fontsize=8, va='top', ha='right', bbox=dict(boxstyle="round,pad=0.3", facecolor='green', alpha=0.3))
-        ax2.text(0.02, 0.02, '❓ Uncategorized\n(Low Commits\n+ Low Features)', transform=ax2.transAxes, fontsize=8, va='bottom', ha='left', bbox=dict(boxstyle="round,pad=0.3", facecolor='gray', alpha=0.3))
-        ax2.text(0.98, 0.02, '⚙️ Traditionalists\n(High Commits\n+ Low Features)', transform=ax2.transAxes, fontsize=8, va='bottom', ha='right', bbox=dict(boxstyle="round,pad=0.3", facecolor='blue', alpha=0.3))
+        ax2.text(0.02, 0.98, 'Experimenters\n(Low Commits\n+ High Features)', transform=ax2.transAxes, fontsize=8, va='top', ha='left', bbox=dict(boxstyle="round,pad=0.3", facecolor='orange', alpha=0.3))
+        ax2.text(0.98, 0.98, 'Adoption Leaders\n(High Commits\n+ High Features)', transform=ax2.transAxes, fontsize=8, va='top', ha='right', bbox=dict(boxstyle="round,pad=0.3", facecolor='green', alpha=0.3))
+        ax2.text(0.02, 0.02, 'Uncategorized\n(Low Commits\n+ Low Features)', transform=ax2.transAxes, fontsize=8, va='bottom', ha='left', bbox=dict(boxstyle="round,pad=0.3", facecolor='gray', alpha=0.3))
+        ax2.text(0.98, 0.02, 'Traditionalists\n(High Commits\n+ Low Features)', transform=ax2.transAxes, fontsize=8, va='bottom', ha='right', bbox=dict(boxstyle="round,pad=0.3", facecolor='blue', alpha=0.3))
         ax2.set_xlabel('Commit Count (log)')
         ax2.set_ylabel('Feature Count (log)')
         ax2.set_title('Activity vs. Feature Adoption\n(With Author Labels and Quartile Lines)')
@@ -449,9 +447,9 @@ class ImprovedClusterAnalyzer:
         for cluster_id in unique_clusters:
             cluster_mask = cluster_labels == cluster_id
             cluster_data = data[cluster_mask]
-            cluster_info = cluster_meanings.get(cluster_id, {'name': f'Cluster {cluster_id}', 'icon': '', 'description': ''})
+            cluster_info = cluster_meanings.get(cluster_id, {'name': f'Cluster {cluster_id}'})
             stats = {
-                'Type': f"{cluster_info['icon']} {cluster_info['name']}",
+                'Type': f"{cluster_info['name']}",
                 'Authors': len(cluster_data),
                 'Avg. Commits*': f"{cluster_data['feature_commits'].mean():.1f}",
                 'Avg. Features': f"{cluster_data['features'].mean():.1f}",
@@ -480,7 +478,7 @@ class ImprovedClusterAnalyzer:
         for cluster_id in sorted(unique_clusters):
             cluster_mask = cluster_labels == cluster_id
             cluster_data = data[cluster_mask]
-            cluster_info = cluster_meanings.get(cluster_id, {'name': f'Cluster {cluster_id}', 'icon': ''})
+            cluster_info = cluster_meanings.get(cluster_id, {'name': f'Cluster {cluster_id}'})
             for _, row in cluster_data.iterrows():
                 all_authors_with_stats.append({
                     'author': row['author'], 'cluster_id': cluster_id, 'cluster_info': cluster_info, 'color': colors[cluster_id],
@@ -488,23 +486,27 @@ class ImprovedClusterAnalyzer:
                 })
 
         all_authors_with_stats.sort(key=lambda x: x['features'], reverse=True)
-        ax4.text(0.02, y_pos, "🏆 TOP AUTHORS (sorted by feature uses):", fontweight='bold', fontsize=11, color='black', transform=ax4.transAxes)
+        ax4.text(0.02, y_pos, "TOP AUTHORS (sorted by feature uses):", fontweight='bold', fontsize=11, color='black', transform=ax4.transAxes)
         y_pos -= 0.06
 
         for i, author_stats in enumerate(all_authors_with_stats[:15]):
             author_name = author_stats['author']
             if len(author_name) > 20:
                 author_name = author_name[:17] + "..."
-            cluster_icon = author_stats['cluster_info']['icon']
-            author_text = f"{cluster_icon} {author_name}"
-            repo_commits_for_author = self.repo_commits.get(repo_name, {}).get(author_stats['author'], 0)
-            stats_text = f"(global: {author_stats['global_commits']} | repo: {repo_commits_for_author} | feature uses: {author_stats['features']})"
+            author_text = f"{author_name}"
+            
+            global_commits = author_stats['global_commits']
+            total_repo_commits = self.per_repo_author_commits.get(repo_name, {}).get(author_stats['author'], 0)
+            feature_commits = author_stats['feature_commits']
+            feature_uses = author_stats['features']
+
+            stats_text = f"(global commits: {global_commits} | repo commits: {total_repo_commits} | feature commits: {feature_commits} | feature uses: {feature_uses})"
             ax4.text(0.02, y_pos, author_text, fontweight='bold', fontsize=9, color=author_stats['color'], transform=ax4.transAxes)
             y_pos -= 0.025
             ax4.text(0.05, y_pos, stats_text, fontsize=7, color='gray', transform=ax4.transAxes)
             y_pos -= 0.035
 
-        ax4.set_title('Example Authors\n(commits: global | in this repo | feature uses)')
+        ax4.set_title('Example Authors\n(commits: global | total in repo | with features | total feature uses)')
         plt.tight_layout()
         plt.savefig(filename, dpi=100, bbox_inches=None)
         plt.close()
@@ -513,8 +515,8 @@ class ImprovedClusterAnalyzer:
 
     def analyze_all_repositories_improved(self, min_authors=3):
         """Analyzes all repositories with the improved algorithm."""
-        print(f"\n🚀 IMPROVED CLUSTER ANALYSIS - ALL REPOSITORIES")
-        print(f"Threshold: ≥{min_authors} authors")
+        print(f"\nIMPROVED CLUSTER ANALYSIS - ALL REPOSITORIES")
+        print(f"Threshold: >={min_authors} authors")
         print("=" * 60)
 
         processed_repos = []
@@ -524,12 +526,12 @@ class ImprovedClusterAnalyzer:
         for repo_name, author_count in repo_sizes:
             if author_count < min_authors:
                 continue
-            print(f"\n📁 {repo_name} ({author_count} authors)")
+            print(f"\n {repo_name} ({author_count} authors)")
             try:
                 data = self.prepare_repository_data(repo_name)
                 filtered_data = data[data['commits'] > 0].copy()
                 if len(filtered_data) < 3:
-                    print("   ⚠ Not enough data")
+                    print("   Not enough data")
                     continue
 
                 cluster_labels, X_pca, pca = self.advanced_clustering_optimization(filtered_data, ['commits', 'features', 'unique_features'])
@@ -541,16 +543,16 @@ class ImprovedClusterAnalyzer:
                         'repo': repo_name, 'authors': author_count, 'clusters': len(np.unique(cluster_labels)),
                         'filename': filename, 'cluster_stats': cluster_stats
                     })
-                    print(f"   ✅ {len(np.unique(cluster_labels))} clusters → {filename.name}")
+                    print(f"   {len(np.unique(cluster_labels))} clusters → {filename.name}")
                 else:
-                    print("   ❌ Clustering error")
+                    print("   Clustering error")
             except Exception as e:
-                print(f"   ❌ Error: {e}")
+                print(f"   Error: {e}")
         return processed_repos
 
     def create_comparison_summary(self, processed_repos):
         """Creates a comparative summary."""
-        print(f"\n📊 Creating summary...")
+        print(f"\nCreating summary...")
         fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(15, 10))
         fig.suptitle('Comparison: Old vs. New Clustering Algorithm', fontsize=16, fontweight='bold')
 
@@ -590,10 +592,10 @@ class ImprovedClusterAnalyzer:
         ax4.axis('off')
         improvements = sum(1 for r in processed_repos if r['clusters'] > 2)
         summary_text = f"""IMPROVEMENT SUMMARY:\n
-📊 Analyzed Repositories: {len(processed_repos)}
-🔧 Repositories with more clusters: {improvements}
-📈 Improvement Percentage: {improvements/len(processed_repos)*100:.0f}%\n
-🏆 TOP RESULTS:\n"""
+Analyzed Repositories: {len(processed_repos)}
+Repositories with more clusters: {improvements}
+Improvement Percentage: {improvements/len(processed_repos)*100:.0f}%\n
+TOP RESULTS:\n"""
         sorted_repos = sorted(processed_repos, key=lambda x: x['clusters'], reverse=True)
         for i, repo in enumerate(sorted_repos[:5], 1):
             summary_text += f"\n{i}. {repo['repo']}: {repo['clusters']} clusters ({repo['authors']} authors)"
@@ -602,7 +604,7 @@ class ImprovedClusterAnalyzer:
         plt.tight_layout()
         plt.savefig(self.comparison_dir / "algorithm_comparison.png", dpi=150, bbox_inches='tight')
         plt.close()
-        print(f"✅ Comparison: {self.comparison_dir / 'algorithm_comparison.png'}")
+        print(f"Comparison: {self.comparison_dir / 'algorithm_comparison.png'}")
         self.save_improvement_report(processed_repos, improvements)
 
     def save_improvement_report(self, processed_repos, improvements):
@@ -628,40 +630,40 @@ class ImprovedClusterAnalyzer:
             for repo in sorted(processed_repos, key=lambda x: x['clusters'], reverse=True):
                 status = "IMPROVEMENT" if repo['clusters'] > 2 else "NO CHANGE"
                 f.write(f"{repo['repo']:25} | {repo['authors']:2d} auth. | {repo['clusters']} clusters | {status}\n")
-        print(f"✅ Report: {report_path}")
+        print(f"Report: {report_path}")
 
     def run_improved_analysis(self):
         """Runs the improved analysis."""
-        print("🚀 IMPROVED CLUSTER ANALYSIS - START")
+        print("IMPROVED CLUSTER ANALYSIS - START")
         print("=" * 60)
         try:
             processed_repos = self.analyze_all_repositories_improved(min_authors=4)
             if processed_repos:
                 self.create_comparison_summary(processed_repos)
                 self.create_global_summary_charts(processed_repos)
-                print(f"\n✅ IMPROVED ANALYSIS COMPLETE!")
-                print(f"📁 Results in: {self.base_dir}")
+                print(f"\nIMPROVED ANALYSIS COMPLETE!")
+                print(f"Results in: {self.base_dir}")
                 cluster_counts = {k: [r['repo'] for r in processed_repos if r['clusters'] == k] for k in set(r['clusters'] for r in processed_repos)}
-                print(f"\n🎯 CLUSTER DISTRIBUTION:")
+                print(f"\nCLUSTER DISTRIBUTION:")
                 for k in sorted(cluster_counts.keys()):
                     print(f"   {k} clusters: {len(cluster_counts[k])} repositories ({', '.join(cluster_counts[k][:3])})")
                 improved = [r for r in processed_repos if r['clusters'] > 2]
                 if improved:
-                    print(f"\n🏆 BIGGEST IMPROVEMENTS:")
+                    print(f"\nBIGGEST IMPROVEMENTS:")
                     for repo in sorted(improved, key=lambda x: x['clusters'], reverse=True):
                         print(f"   {repo['repo']}: {repo['clusters']} clusters (was: 2)")
             else:
-                print("❌ No data to analyze")
+                print("No data to analyze")
         except Exception as e:
-            print(f"❌ ERROR: {e}")
+            print(f"ERROR: {e}")
             import traceback
             traceback.print_exc()
 
     def create_global_summary_charts(self, processed_repos):
         """Creates global summary charts for the summary_charts directory."""
-        print(f"\n📊 Creating global summary charts...")
+        print(f"\nCreating global summary charts...")
         if not processed_repos:
-            print("❌ No data to create summary charts")
+            print("No data to create summary charts")
             return
 
         global_authors_data = {}
@@ -680,11 +682,11 @@ class ImprovedClusterAnalyzer:
                         global_authors_data[author]['unique_features'].update(self.df[(self.df['repository'] == repo_name) & (self.df['author'] == author)]['feature_name'].unique())
                         global_authors_data[author]['repositories'].append(repo_name)
             except Exception as e:
-                print(f"    ⚠ Error processing {repo_name}: {e}")
+                print(f"    Error processing {repo_name}: {e}")
                 continue
 
         if not global_authors_data:
-            print("❌ No data to create charts")
+            print("No data to create charts")
             return
 
         global_data_list = []
@@ -702,7 +704,6 @@ class ImprovedClusterAnalyzer:
                 cluster_meanings = self.assign_cluster_meanings(global_df_raw, cluster_labels)
                 global_df_raw['cluster_id'] = cluster_labels
                 global_df_raw['cluster_name'] = global_df_raw['cluster_id'].apply(lambda id: cluster_meanings.get(id, {}).get('name', 'Unknown'))
-                global_df_raw['cluster_icon'] = global_df_raw['cluster_id'].apply(lambda id: cluster_meanings.get(id, {}).get('icon', '❓'))
 
         repo_summaries = []
         for repo_info in processed_repos:
@@ -714,7 +715,7 @@ class ImprovedClusterAnalyzer:
                     cluster_stats = repo_info.get('cluster_stats', [])
                     cluster_sizes = {'Adoption Leaders': 0, 'Traditionalists': 0, 'Experimenters': 0, 'Uncategorized': 0}
                     for stats in cluster_stats:
-                        type_name = ' '.join(stats['Type'].split(' ')[1:])
+                        type_name = stats['Type']
                         if type_name in cluster_sizes:
                             cluster_sizes[type_name] = stats['Authors']
                     repo_summaries.append({
@@ -723,7 +724,7 @@ class ImprovedClusterAnalyzer:
                         'avg_efficiency': filtered_data['features_per_commit'].mean()
                     })
             except Exception as e:
-                print(f"    ⚠ Error aggregating data for repository {repo_name}: {e}")
+                print(f"    Error aggregating data for repository {repo_name}: {e}")
                 continue
         repo_summary_df = pd.DataFrame(repo_summaries)
 
@@ -732,13 +733,15 @@ class ImprovedClusterAnalyzer:
         self.create_cluster_heatmap(repo_summary_df)
         self.create_repository_summary_chart(repo_summary_df)
 
-        print(f"✅ Created global summary charts in {self.summary_dir}")
-        print(f"📊 Analyzed {len(global_df_raw)} unique authors globally")
+        print(f"Created global summary charts in {self.summary_dir}")
+        print(f"Analyzed {len(global_df_raw)} unique authors globally")
 
     def create_global_cluster_distribution(self, global_df):
         """Creates the global cluster distribution chart."""
-        fig, axes = plt.subplots(2, 2, figsize=(28, 20))
-        ax1, ax2, ax3, ax4 = axes.flatten()
+        fig = plt.figure(figsize=(28, 18))
+        ax1 = plt.subplot2grid((2, 2), (0, 0))
+        ax2 = plt.subplot2grid((2, 2), (0, 1))
+        ax3 = plt.subplot2grid((2, 2), (1, 0), colspan=2)
         fig.suptitle('Global Author Cluster Distribution - All Repositories', fontsize=18, fontweight='bold')
 
         color_map = {'Adoption Leaders': '#2E8B57', 'Traditionalists': '#4169E1', 'Experimenters': '#FF8C00', 'Uncategorized': '#696969'}
@@ -769,7 +772,7 @@ class ImprovedClusterAnalyzer:
             texts_ax3 = []
             for cluster_name, group in global_df.groupby('cluster_name'):
                 color = color_map.get(cluster_name, '#808080')
-                ax3.scatter(group['commits'], group['features'], label=f"{group.iloc[0]['cluster_icon']} {cluster_name}", alpha=0.6, s=60, color=color)
+                ax3.scatter(group['commits'], group['features'], label=cluster_name, alpha=0.6, s=60, color=color)
 
             for cluster_name, cluster_group in global_df.groupby('cluster_name'):
                 if not cluster_group.empty:
@@ -791,7 +794,7 @@ class ImprovedClusterAnalyzer:
                 try:
                     adjust_text(texts_ax3, ax=ax3, expand_points=(2, 2), expand_text=(1.5, 1.5), arrowprops=dict(arrowstyle='->', color='gray', alpha=0.6, lw=0.5), force_points=1.5, force_text=1.5, lim=2000)
                 except Exception as e:
-                    print(f"    ⚠ adjustText error: {e}")
+                    print(f"    adjustText error: {e}")
 
             ax3.set_xlabel('Commit Count (log)', fontsize=12)
             ax3.set_ylabel('Feature Count (log)', fontsize=12)
@@ -801,9 +804,7 @@ class ImprovedClusterAnalyzer:
             ax3.legend(fontsize=11)
             ax3.grid(True, alpha=0.3)
 
-        ax4.axis('off')
-        ax4.text(0.5, 0.5, 'Chart moved to\nrepository_summary.png', ha='center', va='center', fontsize=12, color='gray')
-        plt.tight_layout()
+        plt.tight_layout(rect=[0, 0, 1, 0.97])
         plt.savefig(self.summary_dir / "global_cluster_distribution.png", dpi=200, bbox_inches='tight')
         plt.close()
 
@@ -847,7 +848,7 @@ class ImprovedClusterAnalyzer:
         if not global_df.empty and 'cluster_name' in global_df.columns:
             texts_ax3 = []
             for cluster_name, group in global_df.groupby('cluster_name'):
-                ax3.scatter(group['commits'], group['features_per_commit'], label=f"{group.iloc[0]['cluster_icon']} {cluster_name}", alpha=0.6, s=60, color=color_map.get(cluster_name, 'gray'))
+                ax3.scatter(group['commits'], group['features_per_commit'], label=cluster_name, alpha=0.6, s=60, color=color_map.get(cluster_name, 'gray'))
 
             authors_to_label = set()
             if not top_20_authors.empty: authors_to_label.update(top_20_authors['author'].tolist())
@@ -867,7 +868,7 @@ class ImprovedClusterAnalyzer:
                 try:
                     adjust_text(texts_ax3, ax=ax3, expand_points=(2, 2), expand_text=(1.5, 1.5), arrowprops=dict(arrowstyle='->', color='gray', alpha=0.6, lw=0.5), force_points=1.5, force_text=1.5, lim=2000)
                 except Exception as e:
-                    print(f"    ⚠ adjustText error: {e}")
+                    print(f"    adjustText error: {e}")
 
             ax3.set_xlabel('Commit Count (log)', fontsize=12)
             ax3.set_ylabel('Efficiency (Features/Commit)', fontsize=12)
@@ -883,7 +884,7 @@ class ImprovedClusterAnalyzer:
     def create_cluster_heatmap(self, repo_summary_df):
         """Creates a cluster heatmap per repository."""
         if repo_summary_df.empty:
-            print("    ⚠ No data for heatmap.")
+            print("    No data for heatmap.")
             return
 
         heatmap_data = []
@@ -891,7 +892,7 @@ class ImprovedClusterAnalyzer:
             total_authors = repo['total_authors']
             heatmap_data.append([(repo['cluster_sizes'].get(ct, 0) / total_authors) * 100 if total_authors > 0 else 0 for ct in ['Adoption Leaders', 'Traditionalists', 'Experimenters', 'Uncategorized']])
 
-        heatmap_df = pd.DataFrame(heatmap_data, index=repo_summary_df['repo'], columns=['🏆 Leaders', '⚙️ Traditionalists', '🔬 Experimenters', '❓ Uncategorized'])
+        heatmap_df = pd.DataFrame(heatmap_data, index=repo_summary_df['repo'], columns=['Leaders', 'Traditionalists', 'Experimenters', 'Uncategorized'])
         fig, ax1 = plt.subplots(1, 1, figsize=(16, 14))
         fig.suptitle('Percentage Distribution of Author Types per Repository', fontsize=18, fontweight='bold')
 
@@ -910,13 +911,13 @@ class ImprovedClusterAnalyzer:
         plt.tight_layout(rect=[0, 0, 1, 0.96])
         plt.savefig(self.summary_dir / "cluster_heatmap.png", dpi=200, bbox_inches='tight')
         plt.close()
-        print(f"✅ Created cluster heatmap in {self.summary_dir}")
+        print(f"Created cluster heatmap in {self.summary_dir}")
 
     def create_repository_summary_chart(self, repo_summary_df):
         """Creates a separate summary chart for repositories."""
-        print("📊 Creating repository summary chart...")
+        print("Creating repository summary chart...")
         if repo_summary_df.empty:
-            print("    ⚠ No data for repository summary.")
+            print("    No data for repository summary.")
             return
 
         fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(24, 12))
@@ -947,7 +948,7 @@ class ImprovedClusterAnalyzer:
         plt.tight_layout()
         plt.savefig(self.summary_dir / "repository_summary.png", dpi=200, bbox_inches='tight')
         plt.close()
-        print(f"✅ Created repository summary in {self.summary_dir}")
+        print(f"Created repository summary in {self.summary_dir}")
 
 if __name__ == "__main__":
     ImprovedClusterAnalyzer().run_improved_analysis()
