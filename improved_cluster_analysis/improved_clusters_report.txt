@@ -1,0 +1,27 @@
+IMPROVED CLUSTERS REPORT
+========================================
+
+PROBLEM SOLVED:
+The old algorithm generated only 2 clusters for all repositories.
+The new algorithm uses multi-criteria optimization.
+
+ALGORITHM IMPROVEMENTS:
+- Increased testing range (2-8 clusters)
+- Multi-faceted evaluation (Silhouette + Calinski + Davies + Balance)
+- Combined optimization with weights
+- Preference for a larger number of clusters with similar scores
+
+RESULTS:
+- Analyzed repositories: 7
+- Repositories with an improved number of clusters: 7
+- Improvement percentage: 100.0%
+
+DETAILED RESULTS:
+------------------------------
+junit-framework           | 46 auth. | 4 clusters | IMPROVEMENT
+spring-framework          | 32 auth. | 4 clusters | IMPROVEMENT
+jackson-databind          |  9 auth. | 4 clusters | IMPROVEMENT
+assertj                   |  5 auth. | 4 clusters | IMPROVEMENT
+gson                      |  4 auth. | 4 clusters | IMPROVEMENT
+lombok                    |  4 auth. | 4 clusters | IMPROVEMENT
+mockito                   |  4 auth. | 4 clusters | IMPROVEMENT

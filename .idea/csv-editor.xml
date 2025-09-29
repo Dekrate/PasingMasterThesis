@@ -38,6 +38,13 @@
             </Attribute>
           </value>
         </entry>
+        <entry key="\fixed_logs\gson_manual_log_fixed.csv">
+          <value>
+            <Attribute>
+              <option name="separator" value=":" />
+            </Attribute>
+          </value>
+        </entry>
         <entry key="\fixed_logs\guava_manual_log_fixed.csv">
           <value>
             <Attribute>
